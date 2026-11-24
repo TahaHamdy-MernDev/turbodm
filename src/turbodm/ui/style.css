@@ -35,10 +35,45 @@
 @define-color accent_fg_color #FFFFFF;
 @define-color accent_color #3584E4;
 
-window,
-.background {
+window.background {
     background-color: #0E1117;
     color: #F3F6FA;
+}
+
+/* Keep outer popover shadow frame strictly transparent (prevents dark box gap around menus & dropdowns) */
+popover.background {
+    background-color: transparent;
+}
+
+popover > contents {
+    background-color: #161B26;
+    color: #F3F6FA;
+    border: 1px solid #262E3F;
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+popover > arrow {
+    background-color: #161B26;
+    border: 1px solid #262E3F;
+}
+
+popover modelbutton,
+popover listview row {
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: #F3F6FA;
+}
+
+popover modelbutton:hover,
+popover listview row:hover {
+    background-color: #1D2433;
+}
+
+popover listview row:selected {
+    background-color: #003061;
+    color: #D5E3FF;
 }
 
 headerbar {
