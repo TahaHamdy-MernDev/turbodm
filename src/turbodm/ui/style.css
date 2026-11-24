@@ -1,100 +1,393 @@
-/* TurboDM - Native GTK4 / Libadwaita styling with IDM clarity */
+/* TurboDM Fedora Native Design System — Matching turbodm.netlify.app 1:1
+ * Palette:
+ *   surface:                #0E1117
+ *   surface-dim:            #090C10
+ *   surface-container:      #161B26
+ *   surface-container-high: #1D2433
+ *   outline:                #262E3F
+ *   outline-subtle:         #1E2534
+ *   on-surface:             #F3F6FA
+ *   on-surface-variant:     #94A3B8
+ *   adwaita-blue:           #3584E4
+ *   primary:                #1A67C2
+ *   primary-container:      #003061 / #D5E3FF
+ *   emerald-green:          #2EC27E / #003920 / #73FCB2
+ *   amber-warning:          #E5A50A / #422D00 / #FFDEA8
+ *   cyan-tip:               #38BDF8
+ */
 
-.idm-toolbar {
-    padding: 6px 10px;
-    border-bottom: 1px solid alpha(@borders, 0.7);
-    background-color: @headerbar_bg_color;
+@define-color window_bg_color #0E1117;
+@define-color window_fg_color #F3F6FA;
+@define-color view_bg_color #0E1117;
+@define-color view_fg_color #F3F6FA;
+@define-color headerbar_bg_color #1D2433;
+@define-color headerbar_fg_color #F3F6FA;
+@define-color headerbar_border_color #262E3F;
+@define-color sidebar_bg_color #090C10;
+@define-color sidebar_fg_color #F3F6FA;
+@define-color card_bg_color #161B26;
+@define-color card_fg_color #F3F6FA;
+@define-color dialog_bg_color #161B26;
+@define-color dialog_fg_color #F3F6FA;
+@define-color popover_bg_color #161B26;
+@define-color popover_fg_color #F3F6FA;
+@define-color accent_bg_color #1A67C2;
+@define-color accent_fg_color #FFFFFF;
+@define-color accent_color #3584E4;
+
+window,
+.background {
+    background-color: #0E1117;
+    color: #F3F6FA;
 }
 
-.idm-toolbar-btn {
-    padding: 4px 10px;
-    min-height: 36px;
+headerbar {
+    background-color: #1D2433;
+    border-bottom: 1px solid #262E3F;
+    box-shadow: none;
+    min-height: 46px;
 }
 
-.idm-toolbar-btn label {
+/* Header Badge (Wayland • GTK4) */
+.wayland-badge {
+    background-color: #090C10;
+    border: 1px solid #262E3F;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-family: "JetBrains Mono", monospace;
     font-size: 11px;
+    font-weight: 500;
+    color: #94A3B8;
+}
+
+.brand-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: #F3F6FA;
+}
+
+/* Horizontal IDM Action Toolbar */
+.idm-toolbar {
+    padding: 8px 14px;
+    border-bottom: 1px solid #262E3F;
+    background-color: #161B26;
+}
+
+.idm-btn-primary {
+    background-color: #1A67C2;
+    color: #FFFFFF;
+    border: 1px solid #3584E4;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12.5px;
     font-weight: 600;
 }
 
+.idm-btn-primary:hover {
+    background-color: #3584E4;
+}
+
+.idm-btn-chip {
+    background-color: #1D2433;
+    color: #F3F6FA;
+    border: 1px solid #262E3F;
+    border-radius: 6px;
+    padding: 5px 11px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.idm-btn-chip:hover {
+    background-color: #262E3F;
+    border-color: #3B4760;
+}
+
+.idm-btn-ghost {
+    background-color: transparent;
+    color: #94A3B8;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+}
+
+.idm-btn-ghost:hover {
+    background-color: #1D2433;
+    color: #F3F6FA;
+    border-color: #262E3F;
+}
+
+.toolbar-speed-total {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2EC27E;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background-color: #090C10;
+    border: 1px solid #1E2534;
+}
+
+/* Colored Semantic Icons */
+.icon-emerald { color: #2EC27E; }
+.icon-amber   { color: #E5A50A; }
+.icon-blue    { color: #3584E4; }
+.icon-cyan    { color: #38BDF8; }
+.icon-muted   { color: #94A3B8; }
+.icon-error   { color: #DE3730; }
+
+/* Recessed Sidebar (#090C10) */
 .idm-sidebar {
-    background-color: @sidebar_bg_color;
-    border-right: 1px solid alpha(@borders, 0.7);
+    background-color: #090C10;
+    border-right: 1px solid #262E3F;
+}
+
+.idm-sidebar list,
+.idm-sidebar listbox {
+    background-color: #090C10;
+    padding: 6px;
+}
+
+.idm-sidebar row {
+    border-radius: 6px;
+    margin: 1px 2px;
+    color: #94A3B8;
+}
+
+.idm-sidebar row:hover {
+    background-color: #161B26;
+    color: #F3F6FA;
+}
+
+.idm-sidebar row:selected {
+    background-color: #003061;
+    color: #D5E3FF;
 }
 
 .idm-sidebar-header {
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.06em;
-    opacity: 0.65;
-    padding: 10px 14px 4px 14px;
+    letter-spacing: 0.08em;
+    color: #64748B;
+    padding: 12px 10px 4px 10px;
 }
 
-.idm-statusbar {
-    padding: 5px 14px;
-    border-top: 1px solid alpha(@borders, 0.7);
-    background-color: @headerbar_bg_color;
-    font-size: 12px;
-}
-
-.status-pill {
-    padding: 2px 8px;
+/* Queue status indicator dots */
+.dot-emerald {
+    min-width: 8px;
+    min-height: 8px;
     border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
+    background-color: #2EC27E;
 }
 
-.status-downloading {
-    background-color: alpha(#3584e4, 0.18);
-    color: #3584e4;
+.dot-amber {
+    min-width: 8px;
+    min-height: 8px;
+    border-radius: 999px;
+    background-color: #E5A50A;
 }
 
-.status-completed {
-    background-color: alpha(#2ec27e, 0.2);
-    color: #26a269;
+.dot-muted {
+    min-width: 8px;
+    min-height: 8px;
+    border-radius: 999px;
+    background-color: #475569;
 }
 
-.status-paused {
-    background-color: alpha(#e5a50a, 0.2);
-    color: #c68600;
+/* Main Download Table Header & Rows */
+.table-header-bar {
+    background-color: #161B26;
+    border-bottom: 1px solid #262E3F;
+    padding: 8px 16px;
 }
 
-.status-error {
-    background-color: alpha(#e01b24, 0.18);
-    color: #e01b24;
+.table-col-hdr {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #94A3B8;
 }
 
-.status-queued {
-    background-color: alpha(@window_fg_color, 0.1);
-    color: alpha(@window_fg_color, 0.75);
-}
-
-.segment-bar-frame {
-    border: 1px solid alpha(@borders, 0.85);
-    border-radius: 8px;
-    background-color: alpha(@window_fg_color, 0.05);
+.download-listbox {
+    background-color: #0E1117;
 }
 
 .download-row {
-    padding: 8px 12px;
-    border-bottom: 1px solid alpha(@borders, 0.35);
+    padding: 10px 16px;
+    border-bottom: 1px solid #1E2534;
+    background-color: #0E1117;
+}
+
+.download-row:hover {
+    background-color: #131823;
+}
+
+.download-row:selected {
+    background-color: alpha(#003061, 0.45);
 }
 
 .download-filename {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 13.5px;
+    color: #F3F6FA;
 }
 
 .download-meta {
-    font-size: 11.5px;
-    opacity: 0.72;
+    font-size: 12px;
+    color: #94A3B8;
 }
 
 .mono-value {
-    font-family: monospace;
+    font-family: "JetBrains Mono", monospace;
     font-size: 12px;
 }
 
+.mono-lg {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.text-emerald { color: #2EC27E; }
+.text-blue    { color: #3584E4; }
+.text-cyan    { color: #38BDF8; }
+.text-amber   { color: #E5A50A; }
+.text-muted   { color: #94A3B8; }
+.text-error   { color: #DE3730; }
+
+/* Slim Modern Inline Progress Bar */
+.row-progressbar trough {
+    min-height: 5px;
+    border-radius: 999px;
+    background-color: #1D2433;
+}
+
+.row-progressbar progress {
+    min-height: 5px;
+    border-radius: 999px;
+    background-color: #3584E4;
+}
+
+.row-progressbar.bar-complete progress {
+    background-color: #2EC27E;
+}
+
+.row-progressbar.bar-paused progress {
+    background-color: #E5A50A;
+}
+
+/* Status Pills matching Website Design System */
+.status-pill {
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-downloading {
+    background-color: #003061;
+    color: #D5E3FF;
+}
+
+.status-completed {
+    background-color: #003920;
+    color: #73FCB2;
+}
+
+.status-paused {
+    background-color: #422D00;
+    color: #FFDEA8;
+}
+
+.status-error {
+    background-color: alpha(#DE3730, 0.22);
+    color: #FF8A85;
+}
+
+.status-queued {
+    background-color: #1D2433;
+    color: #94A3B8;
+}
+
+/* Progress Dialog Recessed Telemetry & Segment Map */
+.telemetry-strip {
+    background-color: #090C10;
+    border: 1px solid #1E2534;
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+.recessed-well {
+    background-color: #090C10;
+    border: 1px solid #262E3F;
+    border-radius: 8px;
+}
+
+.segment-bar-frame {
+    border: 1px solid #262E3F;
+    border-radius: 8px;
+    background-color: #090C10;
+}
+
+.surface-card {
+    background-color: #161B26;
+    border: 1px solid #262E3F;
+    border-radius: 10px;
+}
+
+/* Bottom Status Bar */
+.idm-statusbar {
+    padding: 6px 16px;
+    border-top: 1px solid #262E3F;
+    background-color: #090C10;
+    font-size: 12px;
+    color: #94A3B8;
+}
+
 .speed-limiter-active {
-    background-color: alpha(#e5a50a, 0.25);
-    color: #c68600;
+    background-color: #422D00;
+    color: #FFDEA8;
+    border: 1px solid #E5A50A;
+}
+
+/* Crisp Hairline Separators */
+separator {
+    background-color: #262E3F;
+}
+
+/* Inputs & Entries */
+entry,
+spinbutton,
+dropdown button {
+    background-color: #090C10;
+    border: 1px solid #262E3F;
+    color: #F3F6FA;
+    border-radius: 6px;
+}
+
+entry:focus-within {
+    border-color: #3584E4;
+}
+
+/* Progress dialog notebook tabs */
+notebook > header {
+    background-color: #161B26;
+    border-bottom: 1px solid #262E3F;
+}
+
+notebook > header > tabs > tab {
+    color: #94A3B8;
+    padding: 6px 14px;
+    font-weight: 600;
+    font-size: 12.5px;
+}
+
+notebook > header > tabs > tab:checked {
+    color: #F3F6FA;
+    border-bottom: 2px solid #3584E4;
+}
+
+notebook > stack {
+    background-color: #161B26;
 }

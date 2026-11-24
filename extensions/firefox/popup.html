@@ -5,31 +5,26 @@
   <title>TurboDM</title>
   <style>
     :root {
-      color-scheme: light dark;
-      --bg: #ffffff;
-      --card: #f4f6f9;
-      --text: #1f2328;
-      --muted: #59636e;
-      --accent: #1c71d8;
-      --border: #d0d7de;
-      --ok: #26a269;
-      --err: #e01b24;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1e1e22;
-        --card: #28282e;
-        --text: #f0f2f5;
-        --muted: #9da5b4;
-        --accent: #3584e4;
-        --border: #3c3c46;
-      }
+      color-scheme: dark;
+      --bg: #0E1117;
+      --dim: #090C10;
+      --card: #161B26;
+      --card-hi: #1D2433;
+      --text: #F3F6FA;
+      --muted: #94A3B8;
+      --accent: #1A67C2;
+      --accent-hover: #3584E4;
+      --border: #262E3F;
+      --ok: #73FCB2;
+      --ok-bg: #003920;
+      --err: #FFDEA8;
+      --err-bg: #422D00;
     }
     body {
       margin: 0;
       padding: 12px;
-      width: 340px;
-      font-family: system-ui, -apple-system, sans-serif;
+      width: 348px;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       font-size: 13px;
@@ -50,18 +45,18 @@
       gap: 8px;
     }
     .badge {
-      padding: 2px 8px;
+      padding: 2px 9px;
       border-radius: 999px;
       font-size: 11px;
       font-weight: 600;
     }
-    .badge.online { background: rgba(38, 162, 105, 0.18); color: var(--ok); }
-    .badge.offline { background: rgba(224, 27, 36, 0.16); color: var(--err); }
+    .badge.online { background: var(--ok-bg); color: var(--ok); }
+    .badge.offline { background: var(--err-bg); color: var(--err); }
     .section-title {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: var(--muted);
       margin: 10px 0 6px 0;
     }
@@ -73,7 +68,7 @@
       gap: 6px;
     }
     .media-item {
-      background: var(--card);
+      background: var(--dim);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 8px 10px;
@@ -82,22 +77,22 @@
       justify-content: space-between;
       gap: 8px;
     }
-    .media-info {
-      min-width: 0;
-      flex: 1;
-    }
+    .media-info { min-width: 0; flex: 1; }
     .media-title {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
       font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .media-meta {
+      font-family: "JetBrains Mono", monospace;
       font-size: 11px;
       color: var(--muted);
     }
     button {
-      border: none;
+      border: 1px solid var(--accent-hover);
       border-radius: 6px;
       padding: 6px 10px;
       font-size: 12px;
@@ -105,13 +100,15 @@
       cursor: pointer;
       background: var(--accent);
       color: #fff;
+      transition: background 120ms ease-out;
     }
+    button:hover { background: var(--accent-hover); }
     button.secondary {
-      background: var(--card);
+      background: var(--card-hi);
       color: var(--text);
       border: 1px solid var(--border);
     }
-    button:hover { opacity: 0.9; }
+    button.secondary:hover { background: var(--border); }
     .toggle-row {
       display: flex;
       align-items: center;
@@ -120,13 +117,9 @@
       border-bottom: 1px solid var(--border);
     }
     .toggle-row:last-child { border-bottom: none; }
-    .toggle-label { font-size: 12.5px; }
+    .toggle-label { font-size: 12.5px; font-weight: 500; }
     .toggle-sub { font-size: 11px; color: var(--muted); }
-    .footer {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-    }
+    .footer { display: flex; gap: 8px; margin-top: 12px; }
     .footer button { flex: 1; }
     .empty {
       color: var(--muted);
@@ -134,13 +127,23 @@
       padding: 10px;
       text-align: center;
       background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 8px;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="brand">⚡ TurboDM</div>
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#3584E4"/>
+        <path d="M16 6.5V17.5M16 17.5L11.5 13M16 17.5L20.5 13" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="6.5" y="22.5" width="5.5" height="3" rx="1" fill="#2EC27E"/>
+        <rect x="13.25" y="22.5" width="5.5" height="3" rx="1" fill="#73FCB2"/>
+        <rect x="20" y="22.5" width="5.5" height="3" rx="1" fill="#D5E3FF"/>
+      </svg>
+      TurboDM
+    </div>
     <span id="statusBadge" class="badge offline">Checking...</span>
   </div>
 

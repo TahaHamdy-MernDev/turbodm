@@ -1,8 +1,8 @@
-"""Main IDM-style GTK4 + Libadwaita ApplicationWindow for TurboDM."""
+"""Main GTK4 + Libadwaita ApplicationWindow styled 1:1 with the TurboDM Fedora Native design system."""
 
 from __future__ import annotations
 
-import datetime
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -14,9 +14,9 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango  # noqa: E402
 
-from turbodm.constants import APP_NAME, APP_VERSION, DEFAULT_CATEGORIES  # noqa: E402
+from turbodm.constants import APP_ID, APP_NAME, DEFAULT_CATEGORIES  # noqa: E402
 from turbodm.core.manager import DownloadManager  # noqa: E402
-from turbodm.core.models import DownloadItem, DownloadStatus, QueueConfig  # noqa: E402
+from turbodm.core.models import DownloadItem, DownloadStatus  # noqa: E402
 from turbodm.ui.add_dialog import AddDownloadDialog  # noqa: E402
 from turbodm.ui.batch_dialog import BatchDownloadDialog  # noqa: E402
 from turbodm.ui.progress_dialog import DownloadProgressWindow  # noqa: E402
@@ -31,8 +31,19 @@ CLIPBOARD_URL_RE = re.compile(
 )
 
 
+def _create_brand_logo(pixel_size: int = 24) -> Gtk.Image:
+    """Load the crisp TurboDM squircle SVG icon from project assets or installed theme."""
+    asset_svg = Path(__file__).resolve().parents[3] / "assets" / f"{APP_ID}.svg"
+    if asset_svg.exists():
+        img = Gtk.Image.new_from_file(str(asset_svg))
+    else:
+        img = Gtk.Image.new_from_icon_name(APP_ID)
+    img.set_pixel_size(pixel_size)
+    return img
+
+
 class DownloadRowWidget(Gtk.ListBoxRow):
-    """Rich IDM-style download row displaying icon, filename, progress bar, speed, ETA, size, and quick controls."""
+    """Multi-column download row matching the TurboDM desktop mockup table."""
 
     def __init__(self, item: DownloadItem, window: MainWindow) -> None:
         super().__init__()
@@ -43,17 +54,14 @@ class DownloadRowWidget(Gtk.ListBoxRow):
         root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         self.set_child(root)
 
-        # Category Icon
+        # Column 1: Colored Category Icon + Filename + Slim Progress Bar
+        file_col = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10, hexpand=True)
         cat_meta = DEFAULT_CATEGORIES.get(item.category, DEFAULT_CATEGORIES["General"])
         self.icon = Gtk.Image.new_from_icon_name(str(cat_meta["icon"]))
-        self.icon.set_pixel_size(26)
-        root.append(self.icon)
+        self.icon.set_pixel_size(20)
+        file_col.append(self.icon)
 
-        # Center: Filename + Progress Bar + Metadata line
-        center = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, hexpand=True)
-        root.append(center)
-
-        top_line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        name_stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5, hexpand=True, valign=Gtk.Align.CENTER)
         self.name_label = Gtk.Label(
             label=item.filename,
             xalign=0,
@@ -61,40 +69,48 @@ class DownloadRowWidget(Gtk.ListBoxRow):
             ellipsize=Pango.EllipsizeMode.END,
         )
         self.name_label.add_css_class("download-filename")
-        top_line.append(self.name_label)
+        name_stack.append(self.name_label)
 
+        self.progress_bar = Gtk.ProgressBar()
+        self.progress_bar.set_size_request(180, -1)
+        self.progress_bar.set_halign(Gtk.Align.START)
+        self.progress_bar.add_css_class("row-progressbar")
+        name_stack.append(self.progress_bar)
+        file_col.append(name_stack)
+        root.append(file_col)
+
+        # Column 2: Size
+        self.lbl_size = Gtk.Label(xalign=0, width_chars=17)
+        self.lbl_size.add_css_class("mono-value")
+        root.append(self.lbl_size)
+
+        # Column 3: Status Pill
+        status_wrap = Gtk.Box(width_request=125, halign=Gtk.Align.START, valign=Gtk.Align.CENTER)
         self.status_pill = Gtk.Label(label=item.status.value.capitalize())
         self.status_pill.add_css_class("status-pill")
-        top_line.append(self.status_pill)
-        center.append(top_line)
+        status_wrap.append(self.status_pill)
+        root.append(status_wrap)
 
-        self.progress_bar = Gtk.ProgressBar(hexpand=True)
-        center.append(self.progress_bar)
+        # Column 4: Transfer Rate (Emerald when active)
+        self.lbl_speed = Gtk.Label(xalign=0, width_chars=12)
+        self.lbl_speed.add_css_class("mono-value")
+        root.append(self.lbl_speed)
 
-        meta_line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
-        self.lbl_size = Gtk.Label(xalign=0)
-        self.lbl_size.add_css_class("download-meta")
-        self.lbl_speed = Gtk.Label(xalign=0)
-        self.lbl_speed.add_css_class("download-meta")
-        self.lbl_eta = Gtk.Label(xalign=0)
-        self.lbl_eta.add_css_class("download-meta")
-        self.lbl_cat = Gtk.Label(xalign=1, hexpand=True)
-        self.lbl_cat.add_css_class("download-meta")
-        meta_line.append(self.lbl_size)
-        meta_line.append(self.lbl_speed)
-        meta_line.append(self.lbl_eta)
-        meta_line.append(self.lbl_cat)
-        center.append(meta_line)
+        # Column 5: ETA
+        self.lbl_eta = Gtk.Label(xalign=0, width_chars=9)
+        self.lbl_eta.add_css_class("mono-value")
+        self.lbl_eta.add_css_class("text-muted")
+        root.append(self.lbl_eta)
 
-        # Right: Inline Quick Action Buttons
-        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4, valign=Gtk.Align.CENTER)
+        # Column 6: Compact Quick Action Controls
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2, valign=Gtk.Align.CENTER)
         self.btn_toggle = Gtk.Button(icon_name="media-playback-start-symbolic", tooltip_text="Resume / Pause")
         self.btn_toggle.add_css_class("flat")
         self.btn_toggle.connect("clicked", lambda *_: self._window.toggle_download(self.download_id))
         actions.append(self.btn_toggle)
 
         self.btn_details = Gtk.Button(
-            icon_name="view-more-symbolic", tooltip_text="Show Download Progress Window"
+            icon_name="view-more-symbolic", tooltip_text="Open Download Progress Window"
         )
         self.btn_details.add_css_class("flat")
         self.btn_details.connect("clicked", lambda *_: self._window.open_progress_window(self.download_id))
@@ -108,7 +124,7 @@ class DownloadRowWidget(Gtk.ListBoxRow):
         actions.append(self.btn_folder)
         root.append(actions)
 
-        # Right-click context menu gesture
+        # Right-click context menu
         right_click = Gtk.GestureClick(button=3)
         right_click.connect("pressed", self._on_right_click)
         self.add_controller(right_click)
@@ -120,69 +136,80 @@ class DownloadRowWidget(Gtk.ListBoxRow):
         cat_meta = DEFAULT_CATEGORIES.get(item.category, DEFAULT_CATEGORIES["General"])
         self.icon.set_from_icon_name(str(cat_meta["icon"]))
 
-        # Status badge styling
-        for cls in (
-            "status-downloading",
-            "status-completed",
-            "status-paused",
-            "status-error",
-            "status-queued",
-        ):
+        for cls in ("icon-blue", "icon-emerald", "icon-amber", "icon-error", "icon-muted"):
+            self.icon.remove_css_class(cls)
+        for cls in ("status-downloading", "status-completed", "status-paused", "status-error", "status-queued"):
             self.status_pill.remove_css_class(cls)
+        for cls in ("bar-complete", "bar-paused"):
+            self.progress_bar.remove_css_class(cls)
+        for cls in ("text-emerald", "text-muted", "text-error"):
+            self.lbl_speed.remove_css_class(cls)
 
         st = item.status
+        parts = max(1, len(item.segments) or item.max_connections)
+
         if st in (DownloadStatus.DOWNLOADING, DownloadStatus.PROBING, DownloadStatus.MERGING):
+            self.icon.add_css_class("icon-blue")
             self.status_pill.add_css_class("status-downloading")
-            self.status_pill.set_text(f"{item.progress_percent:.1f}%")
+            self.status_pill.set_text(f"{item.progress_percent:.1f}% • {parts}x")
+            self.progress_bar.set_visible(True)
+            self.progress_bar.set_fraction(item.progress_fraction)
+            self.lbl_size.set_text(f"{format_bytes(item.downloaded_size)} / {format_bytes(item.total_size)}")
+            self.lbl_speed.set_text(format_speed(item.speed) if item.speed > 0 else "--")
+            self.lbl_speed.add_css_class("text-emerald")
+            self.lbl_eta.set_text(format_eta(item.eta) if item.eta else "--")
             self.btn_toggle.set_icon_name("media-playback-pause-symbolic")
             self.btn_toggle.set_tooltip_text("Pause download")
             self.btn_toggle.set_visible(True)
         elif st == DownloadStatus.COMPLETED:
+            self.icon.add_css_class("icon-emerald")
             self.status_pill.add_css_class("status-completed")
-            self.status_pill.set_text("Complete")
+            self.status_pill.set_text("✓ Completed")
+            self.progress_bar.add_css_class("bar-complete")
+            self.progress_bar.set_visible(False)
+            self.lbl_size.set_text(format_bytes(item.total_size))
+            self.lbl_speed.set_text("—")
+            self.lbl_speed.add_css_class("text-muted")
+            self.lbl_eta.set_text("Done")
             self.btn_toggle.set_visible(False)
         elif st == DownloadStatus.PAUSED:
+            self.icon.add_css_class("icon-amber")
             self.status_pill.add_css_class("status-paused")
             self.status_pill.set_text(f"Paused ({item.progress_percent:.0f}%)")
+            self.progress_bar.add_css_class("bar-paused")
+            self.progress_bar.set_visible(True)
+            self.progress_bar.set_fraction(item.progress_fraction)
+            self.lbl_size.set_text(f"{format_bytes(item.downloaded_size)} / {format_bytes(item.total_size)}")
+            self.lbl_speed.set_text("0 KB/s")
+            self.lbl_speed.add_css_class("text-muted")
+            self.lbl_eta.set_text("—")
             self.btn_toggle.set_icon_name("media-playback-start-symbolic")
             self.btn_toggle.set_tooltip_text("Resume download")
             self.btn_toggle.set_visible(True)
         elif st == DownloadStatus.ERROR:
+            self.icon.add_css_class("icon-error")
             self.status_pill.add_css_class("status-error")
             self.status_pill.set_text("Error")
+            self.progress_bar.set_visible(False)
+            self.lbl_size.set_text(f"{format_bytes(item.downloaded_size)} / {format_bytes(item.total_size)}")
+            self.lbl_speed.set_text("Failed")
+            self.lbl_speed.add_css_class("text-error")
+            self.lbl_eta.set_text("—")
             self.btn_toggle.set_icon_name("view-refresh-symbolic")
             self.btn_toggle.set_tooltip_text("Retry download")
             self.btn_toggle.set_visible(True)
         else:
+            self.icon.add_css_class("icon-muted")
             self.status_pill.add_css_class("status-queued")
             self.status_pill.set_text(st.value.capitalize())
+            self.progress_bar.set_visible(False)
+            self.lbl_size.set_text(format_bytes(item.total_size))
+            self.lbl_speed.set_text("—")
+            self.lbl_speed.add_css_class("text-muted")
+            self.lbl_eta.set_text("Queued")
             self.btn_toggle.set_icon_name("media-playback-start-symbolic")
             self.btn_toggle.set_tooltip_text("Start download")
             self.btn_toggle.set_visible(True)
-
-        self.progress_bar.set_fraction(item.progress_fraction)
-        total_str = format_bytes(item.total_size)
-        dl_str = format_bytes(item.downloaded_size)
-        if st == DownloadStatus.COMPLETED:
-            self.lbl_size.set_text(total_str)
-            dt_str = (
-                datetime.datetime.fromtimestamp(item.completed_at).strftime("%Y-%m-%d %H:%M")
-                if item.completed_at
-                else ""
-            )
-            self.lbl_speed.set_text(dt_str)
-            self.lbl_eta.set_text("")
-        elif st == DownloadStatus.ERROR:
-            self.lbl_size.set_text(f"{dl_str} / {total_str}")
-            self.lbl_speed.set_text(item.error_message[:60] if item.error_message else "Failed")
-            self.lbl_eta.set_text("")
-        else:
-            self.lbl_size.set_text(f"{dl_str} / {total_str}")
-            self.lbl_speed.set_text(format_speed(item.speed) if item.speed > 0 else "--")
-            self.lbl_eta.set_text(f"ETA: {format_eta(item.eta)}" if item.eta else "")
-
-        parts_info = f" • {len(item.segments)} parts" if len(item.segments) > 1 else ""
-        self.lbl_cat.set_text(f"{item.category}{parts_info}")
 
     def _on_right_click(self, _gesture: Gtk.GestureClick, _n_press: int, x: float, y: float) -> None:
         self._window.select_row_by_id(self.download_id)
@@ -190,24 +217,23 @@ class DownloadRowWidget(Gtk.ListBoxRow):
 
 
 class MainWindow(Adw.ApplicationWindow):
-    """Main IDM-style TurboDM window."""
+    """Main IDM-style TurboDM window styled after the TurboDM Fedora Native website."""
 
     def __init__(self, app: Adw.Application, manager: DownloadManager) -> None:
         super().__init__(
             application=app,
-            title=f"{APP_NAME} — Internet Download Manager for Fedora",
-            default_width=1080,
-            default_height=660,
+            title=f"{APP_NAME} — Fedora Native Download Manager",
+            default_width=1160,
+            default_height=690,
         )
         self.manager = manager
-        self._active_filter_type = "all"  # all | category | status | queue
+        self._active_filter_type = "all"
         self._active_filter_value = ""
         self._search_text = ""
         self._sort_key = "created_at"
         self._rows: dict[str, DownloadRowWidget] = {}
         self._progress_windows: dict[str, DownloadProgressWindow] = {}
         self._last_clipboard_url = ""
-        self._context_popover: Gtk.PopoverMenu | None = None
 
         self._build_ui()
         self._wire_manager_events()
@@ -215,10 +241,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._rebuild_download_list()
         self._refresh_statusbar()
 
-        # Periodic statusbar & clipboard watcher timer (1s)
         GLib.timeout_add(1000, self._on_periodic_tick)
-
-        # Hide to background on close if configured (IDM behavior)
         self.connect("close-request", self._on_close_request)
 
     def _build_ui(self) -> None:
@@ -228,28 +251,39 @@ class MainWindow(Adw.ApplicationWindow):
         outer = Adw.ToolbarView()
         self.toast_overlay.set_child(outer)
 
-        # --- Top HeaderBar ---
+        # --- Top HeaderBar (Logo + Wordmark + Wayland/GTK Badge + Inline Filter + Controls) ---
         header = Adw.HeaderBar()
-        title_box = Adw.WindowTitle(title=APP_NAME, subtitle="High-Speed Download Manager")
-        header.set_title_widget(title_box)
+        header.set_show_title(False)
 
-        # Quick Search toggle
-        self.search_toggle = Gtk.ToggleButton(
-            icon_name="system-search-symbolic", tooltip_text="Filter downloads (Ctrl+F)"
-        )
-        self.search_toggle.connect("toggled", self._on_search_toggled)
-        header.pack_start(self.search_toggle)
+        brand_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10, valign=Gtk.Align.CENTER)
+        brand_box.append(_create_brand_logo(24))
+        brand_lbl = Gtk.Label(label=APP_NAME)
+        brand_lbl.add_css_class("brand-title")
+        brand_box.append(brand_lbl)
 
-        # Quick Global Speed Limiter toggle
+        session = os.environ.get("XDG_SESSION_TYPE", "wayland").capitalize()
+        gtk_ver = f"GTK {Gtk.get_major_version()}.{Gtk.get_minor_version()}"
+        env_badge = Gtk.Label(label=f"{session} • {gtk_ver}")
+        env_badge.add_css_class("wayland-badge")
+        brand_box.append(env_badge)
+        header.pack_start(brand_box)
+
+        # Right side of HeaderBar: Inline Filter Search + Speed Limiter + App Menu
+        self.search_entry = Gtk.SearchEntry(placeholder_text="Filter downloads...")
+        self.search_entry.set_size_request(210, -1)
+        self.search_entry.connect("search-changed", self._on_search_changed)
+
+        # Keep compatibility toggle attribute for Ctrl+F action
+        self.search_toggle = Gtk.ToggleButton(visible=False)
+        self.search_toggle.connect("toggled", lambda *_: self.search_entry.grab_focus())
+
         self.speed_limit_btn = Gtk.ToggleButton(
             icon_name="speedometer-symbolic",
             tooltip_text="Toggle Global Speed Limiter",
             active=self.manager.settings.global_speed_limit_enabled,
         )
         self.speed_limit_btn.connect("toggled", self._on_speed_limit_toggled)
-        header.pack_end(self.speed_limit_btn)
 
-        # App Menu
         menu = Gio.Menu()
         menu.append("Batch Download...", "app.batch")
         menu.append("Scheduler & Queues...", "app.scheduler")
@@ -257,90 +291,99 @@ class MainWindow(Adw.ApplicationWindow):
         menu.append("About TurboDM", "app.about")
         menu.append("Quit TurboDM", "app.quit")
         menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu)
-        header.pack_end(menu_btn)
 
+        header.pack_end(menu_btn)
+        header.pack_end(self.speed_limit_btn)
+        header.pack_end(self.search_entry)
         outer.add_top_bar(header)
 
-        # --- Classic IDM Action Toolbar ---
-        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        # --- Horizontal IDM Action Toolbar matching Website Mockup ---
+        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         toolbar.add_css_class("idm-toolbar")
 
-        def _tbtn(icon: str, label: str, tooltip: str, cb: Any, suggested: bool = False) -> Gtk.Button:
+        def _tbtn(
+            icon: str,
+            label: str,
+            tooltip: str,
+            cb: Any,
+            style: str = "ghost",
+            icon_cls: str = "",
+        ) -> Gtk.Button:
             btn = Gtk.Button(tooltip_text=tooltip)
-            btn.add_css_class("flat")
-            btn.add_css_class("idm-toolbar-btn")
-            if suggested:
-                btn.remove_css_class("flat")
-                btn.add_css_class("suggested-action")
-            inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, halign=Gtk.Align.CENTER)
-            inner.append(Gtk.Image.new_from_icon_name(icon))
+            btn.add_css_class(f"idm-btn-{style}")
+            inner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6, valign=Gtk.Align.CENTER)
+            img = Gtk.Image.new_from_icon_name(icon)
+            img.set_pixel_size(15)
+            if icon_cls:
+                img.add_css_class(icon_cls)
+            inner.append(img)
             inner.append(Gtk.Label(label=label))
             btn.set_child(inner)
             btn.connect("clicked", cb)
             toolbar.append(btn)
             return btn
 
-        _tbtn("list-add-symbolic", "Add URL", "Add a new download URL (Ctrl+N)", lambda *_: self.open_add_dialog(), suggested=True)
-        _tbtn("media-playback-start-symbolic", "Resume", "Resume selected download", lambda *_: self._resume_selected())
-        _tbtn("media-playback-pause-symbolic", "Stop", "Pause selected download", lambda *_: self._pause_selected())
-        _tbtn("media-playback-stop-symbolic", "Stop All", "Pause all active downloads", lambda *_: self.manager.pause_all())
-        toolbar.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        _tbtn("edit-delete-symbolic", "Delete", "Remove selected download", lambda *_: self._delete_selected(False))
-        _tbtn("edit-clear-all-symbolic", "Clear Done", "Remove all completed entries from list", lambda *_: self._clear_completed())
-        toolbar.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        _tbtn("view-list-symbolic", "Batch", "Batch download wildcard or URL list", lambda *_: self.open_batch_dialog())
+        _tbtn("list-add-symbolic", "Add URL", "Add a new download URL (Ctrl+N)", lambda *_: self.open_add_dialog(), style="primary")
+        _tbtn("media-playback-start-symbolic", "Resume", "Resume selected download", lambda *_: self._resume_selected(), style="chip", icon_cls="icon-emerald")
+        _tbtn("media-playback-pause-symbolic", "Stop", "Pause selected download", lambda *_: self._pause_selected(), style="chip", icon_cls="icon-amber")
+        _tbtn("media-playback-stop-symbolic", "Stop All", "Pause all active downloads", lambda *_: self.manager.pause_all(), style="chip")
+
+        sep1 = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+        sep1.set_margin_start(4)
+        sep1.set_margin_end(4)
+        toolbar.append(sep1)
+
+        _tbtn("view-list-symbolic", "Batch", "Batch download wildcards or URL list", lambda *_: self.open_batch_dialog())
         _tbtn("alarm-symbolic", "Scheduler", "Configure queues & schedules", lambda *_: self.open_scheduler_dialog())
-        _tbtn("media-playlist-consecutive-symbolic", "Start Queue", "Start Main Download Queue", lambda *_: self._start_active_queue())
-        _tbtn("process-stop-symbolic", "Stop Queue", "Stop running queue", lambda *_: self._stop_active_queue())
+        _tbtn("media-playlist-consecutive-symbolic", "Start Queue", "Start active queue", lambda *_: self._start_active_queue())
+        _tbtn("edit-delete-symbolic", "Delete", "Remove selected download", lambda *_: self._delete_selected(False))
+        _tbtn("edit-clear-all-symbolic", "Clear Done", "Clear completed entries", lambda *_: self._clear_completed())
+        _tbtn("emblem-system-symbolic", "Options", "TurboDM Options & Browser Setup", lambda *_: self.open_settings_dialog())
+
         toolbar.append(Gtk.Box(hexpand=True))
-        _tbtn("emblem-system-symbolic", "Options", "TurboDM Preferences & Browser Setup", lambda *_: self.open_settings_dialog())
+
+        self.toolbar_speed_lbl = Gtk.Label(label="Total: 0 B/s")
+        self.toolbar_speed_lbl.add_css_class("toolbar-speed-total")
+        toolbar.append(self.toolbar_speed_lbl)
 
         outer.add_top_bar(toolbar)
 
-        # --- Search Bar (hidden until toggled) ---
-        self.search_bar = Gtk.SearchBar()
-        self.search_entry = Gtk.SearchEntry(placeholder_text="Search downloads by filename, URL, or category...", hexpand=True)
-        self.search_entry.connect("search-changed", self._on_search_changed)
-        self.search_bar.set_child(self.search_entry)
-        self.search_bar.connect_entry(self.search_entry)
-        outer.add_top_bar(self.search_bar)
-
-        # --- Center Split: IDM Categories/Queues Sidebar + Downloads List ---
-        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, position=225)
+        # --- Center Split: Recessed #090C10 Sidebar + Main Table ---
+        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, position=235)
         outer.set_content(paned)
 
-        # Sidebar
         sb_scroll = Gtk.ScrolledWindow(vexpand=True)
         sb_scroll.add_css_class("idm-sidebar")
         self.sidebar_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
-        self.sidebar_list.add_css_class("navigation-sidebar")
         self.sidebar_list.connect("row-selected", self._on_sidebar_selected)
         sb_scroll.set_child(self.sidebar_list)
         paned.set_start_child(sb_scroll)
 
-        # Right Pane: Filter Header + Downloads List
+        # Right Pane: Filter Bar + Table Column Headers + Download Rows
         right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0, hexpand=True, vexpand=True)
         paned.set_end_child(right_box)
 
-        list_hdr = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        list_hdr.set_margin_top(8)
-        list_hdr.set_margin_bottom(6)
-        list_hdr.set_margin_start(14)
-        list_hdr.set_margin_end(14)
+        # Table Column Header Strip matching Website
+        tbl_hdr = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        tbl_hdr.add_css_class("table-header-bar")
 
-        self.filter_title_label = Gtk.Label(label="All Downloads", xalign=0, hexpand=True)
-        self.filter_title_label.add_css_class("title-4")
-        list_hdr.append(self.filter_title_label)
+        self.filter_title_label = Gtk.Label(label="File Name — All Downloads", xalign=0, hexpand=True)
+        self.filter_title_label.add_css_class("table-col-hdr")
+        tbl_hdr.append(self.filter_title_label)
 
-        list_hdr.append(Gtk.Label(label="Sort:"))
+        for title, chars in (("Size", 17), ("Status", 16), ("Transfer Rate", 12), ("ETA", 9)):
+            lbl = Gtk.Label(label=title, xalign=0, width_chars=chars)
+            lbl.add_css_class("table-col-hdr")
+            tbl_hdr.append(lbl)
+
+        # Compact sort dropdown aligned right over the action buttons column
         self._sort_keys = ["created_at", "filename", "total_size", "status", "category"]
-        self.sort_dropdown = Gtk.DropDown.new_from_strings(
-            ["Date Added", "File Name", "Size", "Status", "Category"]
-        )
+        self.sort_dropdown = Gtk.DropDown.new_from_strings(["Recent", "Name", "Size", "Status", "Category"])
+        self.sort_dropdown.set_tooltip_text("Sort downloads")
         self.sort_dropdown.connect("notify::selected", self._on_sort_changed)
-        list_hdr.append(self.sort_dropdown)
-        right_box.append(list_hdr)
-        right_box.append(Gtk.Separator())
+        tbl_hdr.append(self.sort_dropdown)
+
+        right_box.append(tbl_hdr)
 
         # Download List + Empty State Stack
         self.content_stack = Gtk.Stack(vexpand=True, hexpand=True)
@@ -348,30 +391,35 @@ class MainWindow(Adw.ApplicationWindow):
 
         dl_scroll = Gtk.ScrolledWindow(vexpand=True, hexpand=True)
         self.download_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
+        self.download_list.add_css_class("download-listbox")
         self.download_list.connect("row-activated", self._on_download_row_activated)
         dl_scroll.set_child(self.download_list)
         self.content_stack.add_named(dl_scroll, "list")
 
         empty_status = Adw.StatusPage(
             icon_name="folder-download-symbolic",
-            title="No Downloads Here",
-            description="Click 'Add URL' to start a fast multi-part download, or right-click any link in Chrome/Firefox.",
+            title="No Downloads Yet",
+            description="Click 'Add URL' to accelerate a file up to 32 parallel segments, or right-click any link in Chrome / Firefox.",
         )
         self.content_stack.add_named(empty_status, "empty")
 
-        # --- Bottom Status Bar ---
+        # --- Recessed Bottom Status Bar ---
         statusbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
         statusbar.add_css_class("idm-statusbar")
         self.sb_count = Gtk.Label(label="0 downloads", xalign=0)
+        self.sb_count.add_css_class("mono-value")
         self.sb_speed = Gtk.Label(label="Speed: 0 B/s", xalign=0)
         self.sb_speed.add_css_class("mono-value")
+        self.sb_speed.add_css_class("text-emerald")
         self.sb_limiter = Gtk.Label(label="Limiter: Off", xalign=0)
+        self.sb_limiter.add_css_class("mono-value")
         self.sb_ipc = Gtk.Label(
-            label=f"Browser Bridge: 127.0.0.1:{self.manager.settings.ipc_port}",
+            label=f"● Browser Bridge: 127.0.0.1:{self.manager.settings.ipc_port}",
             xalign=1,
             hexpand=True,
         )
-        self.sb_ipc.add_css_class("dim-label")
+        self.sb_ipc.add_css_class("mono-value")
+        self.sb_ipc.add_css_class("text-muted")
 
         statusbar.append(self.sb_count)
         statusbar.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
@@ -381,7 +429,7 @@ class MainWindow(Adw.ApplicationWindow):
         statusbar.append(self.sb_ipc)
         outer.add_bottom_bar(statusbar)
 
-    # ---------- Manager Event Wiring (thread-safe -> GLib main loop) ----------
+    # ---------- Manager Event Wiring ----------
 
     def _wire_manager_events(self) -> None:
         self.manager.on_item_added.append(lambda item: GLib.idle_add(self._on_item_added_ui, item))
@@ -431,23 +479,36 @@ class MainWindow(Adw.ApplicationWindow):
             row.set_child(lbl)
             self.sidebar_list.append(row)
 
-        def _add_nav(ftype: str, fval: str, title: str, icon: str, count: int) -> Gtk.ListBoxRow:
+        def _add_nav(
+            ftype: str,
+            fval: str,
+            title: str,
+            icon: str | None,
+            count: int,
+            dot_cls: str = "",
+        ) -> Gtk.ListBoxRow:
             row = Gtk.ListBoxRow()
             row.filter_type = ftype  # type: ignore[attr-defined]
             row.filter_value = fval  # type: ignore[attr-defined]
             row.filter_title = title  # type: ignore[attr-defined]
-            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
             box.set_margin_top(6)
             box.set_margin_bottom(6)
-            box.set_margin_start(10)
-            box.set_margin_end(10)
-            box.append(Gtk.Image.new_from_icon_name(icon))
-            box.append(Gtk.Label(label=title, xalign=0, hexpand=True))
-            if count > 0:
-                cnt = Gtk.Label(label=str(count))
-                cnt.add_css_class("dim-label")
-                cnt.add_css_class("mono-value")
-                box.append(cnt)
+            box.set_margin_start(8)
+            box.set_margin_end(8)
+            if dot_cls:
+                dot = Gtk.Box(valign=Gtk.Align.CENTER)
+                dot.add_css_class(dot_cls)
+                box.append(dot)
+            elif icon:
+                img = Gtk.Image.new_from_icon_name(icon)
+                img.set_pixel_size(15)
+                box.append(img)
+            box.append(Gtk.Label(label=title, xalign=0, hexpand=True, ellipsize=Pango.EllipsizeMode.END))
+            cnt = Gtk.Label(label=str(count))
+            cnt.add_css_class("mono-value")
+            cnt.add_css_class("text-muted")
+            box.append(cnt)
             row.set_child(box)
             self.sidebar_list.append(row)
             return row
@@ -475,8 +536,8 @@ class MainWindow(Adw.ApplicationWindow):
         _add_header("QUEUES")
         for q in self.manager.queues.values():
             q_cnt = sum(1 for i in items if i.queue_id == q.id)
-            q_label = f"{q.name} ▶" if q.is_running else q.name
-            r_q = _add_nav("queue", q.id, q_label, "view-list-symbolic", q_cnt)
+            dot = "dot-emerald" if q.is_running else ("dot-amber" if q.schedule_enabled else "dot-muted")
+            r_q = _add_nav("queue", q.id, q.name, None, q_cnt, dot_cls=dot)
             if self._active_filter_type == "queue" and self._active_filter_value == q.id:
                 selected_row = r_q
 
@@ -489,7 +550,7 @@ class MainWindow(Adw.ApplicationWindow):
             return
         self._active_filter_type = row.filter_type  # type: ignore[attr-defined]
         self._active_filter_value = row.filter_value  # type: ignore[attr-defined]
-        self.filter_title_label.set_text(row.filter_title)  # type: ignore[attr-defined]
+        self.filter_title_label.set_text(f"File Name — {row.filter_title}")  # type: ignore[attr-defined]
         self._rebuild_download_list()
 
     # ---------- Download List ----------
@@ -752,9 +813,6 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.open_progress_window(item.id)
 
-    def _on_search_toggled(self, btn: Gtk.ToggleButton) -> None:
-        self.search_bar.set_search_mode(btn.get_active())
-
     def _on_search_changed(self, entry: Gtk.SearchEntry) -> None:
         self._search_text = entry.get_text().strip()
         self._rebuild_download_list()
@@ -769,7 +827,7 @@ class MainWindow(Adw.ApplicationWindow):
         enabled = btn.get_active()
         kbps = self.manager.settings.global_speed_limit_kbps
         if enabled and kbps <= 0:
-            kbps = 1024  # Sensible 1 MB/s default if toggled before configuring
+            kbps = 1024
         self.manager.set_global_speed_limit(enabled, kbps)
         self._refresh_statusbar()
 
@@ -777,8 +835,10 @@ class MainWindow(Adw.ApplicationWindow):
         total_items = len(self.manager.list_downloads())
         active = self.manager.get_active_count()
         speed = self.manager.get_total_speed()
+        speed_str = format_speed(speed)
         self.sb_count.set_text(f"{total_items} downloads ({active} active)")
-        self.sb_speed.set_text(f"Speed: {format_speed(speed)}")
+        self.sb_speed.set_text(f"Speed: {speed_str}")
+        self.toolbar_speed_lbl.set_text(f"Total: {speed_str}")
 
         s = self.manager.settings
         if s.global_speed_limit_enabled and s.global_speed_limit_kbps > 0:
@@ -821,5 +881,5 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_close_request(self, _win: Gtk.Window) -> bool:
         if self.manager.settings.keep_running_in_background:
             self.set_visible(False)
-            return True  # Prevent destroy; stay alive in background
+            return True
         return False

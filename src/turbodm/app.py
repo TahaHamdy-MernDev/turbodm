@@ -51,6 +51,8 @@ class TurboDMApplication(Adw.Application):
 
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
+        # Enforce TurboDM dark-first Fedora Native design system
+        Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.FORCE_DARK)
         self._load_css()
         self._register_actions()
 
