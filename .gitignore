@@ -22,6 +22,16 @@ website/node_modules/
 website/dist/
 website/.astro/
 
+# Android (Kotlin / Gradle)
+android/.gradle/
+android/.idea/
+android/local.properties
+android/build/
+android/app/build/
+android/app/release/
+*.jks
+*.keystore
+
 # IDE / OS
 .vscode/
 .idea/
