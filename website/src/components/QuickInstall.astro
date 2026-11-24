@@ -6,20 +6,20 @@ const EXT_CMD = 'chrome://extensions  # Load unpacked → turbodm/extensions/chr
 const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
 ---
 
-<section id="install" class="py-section border-b border-outline">
-  <div class="max-w-[920px] mx-auto px-4 sm:px-8 flex flex-col gap-8">
-    <div class="text-center flex flex-col gap-2">
+<section id="install" class="py-12 md:py-section border-b border-outline">
+  <div class="max-w-[920px] mx-auto px-4 sm:px-8 flex flex-col gap-6 md:gap-8">
+    <div class="text-left md:text-center flex flex-col gap-1.5 md:gap-2">
       <h2 class="font-headline text-headline-lg-mobile md:text-headline-lg text-on-surface">
         Install in One Command
       </h2>
-      <p class="font-body text-body-md text-on-surface-variant">
+      <p class="font-body text-body-sm md:text-body-md text-on-surface-variant">
         Zero sudo required. Installs cleanly into your user prefix and registers GNOME &amp; browser native messaging.
       </p>
     </div>
 
     <div class="bg-surface-container border border-outline rounded-md overflow-hidden">
-      <div role="tablist" aria-label="Install methods" class="flex flex-wrap items-center justify-between gap-2 p-2.5 border-b border-outline bg-surface-container-high">
-        <div class="flex flex-wrap items-center gap-1.5">
+      <div role="tablist" aria-label="Install methods" class="flex items-center justify-between gap-2 p-2 sm:p-2.5 border-b border-outline bg-surface-container-high overflow-x-auto">
+        <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <button
             type="button"
             role="tab"
@@ -28,9 +28,10 @@ const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
             aria-controls="panel-one-cmd"
             data-copy-for="cmd-one-cmd"
             tabindex="0"
-            class="install-tab px-4 py-2 rounded-sm bg-primary text-on-primary transition-colors duration-state-change font-label text-label-lg cursor-pointer"
+            class="install-tab px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm bg-primary text-on-primary transition-colors duration-state-change font-label text-label-sm sm:text-label-lg cursor-pointer"
           >
-            One-Command Install
+            <span class="sm:hidden">1-Command</span>
+            <span class="hidden sm:inline">One-Command Install</span>
           </button>
           <button
             type="button"
@@ -40,9 +41,10 @@ const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
             aria-controls="panel-browser-ext"
             data-copy-for="cmd-browser-ext"
             tabindex="-1"
-            class="install-tab px-4 py-2 rounded-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors duration-state-change font-label text-label-lg cursor-pointer"
+            class="install-tab px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors duration-state-change font-label text-label-sm sm:text-label-lg cursor-pointer"
           >
-            Browser Extensions
+            <span class="sm:hidden">Extensions</span>
+            <span class="hidden sm:inline">Browser Extensions</span>
           </button>
           <button
             type="button"
@@ -52,7 +54,7 @@ const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
             aria-controls="panel-uninstall"
             data-copy-for="cmd-uninstall"
             tabindex="-1"
-            class="install-tab px-4 py-2 rounded-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors duration-state-change font-label text-label-lg cursor-pointer"
+            class="install-tab px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors duration-state-change font-label text-label-sm sm:text-label-lg cursor-pointer"
           >
             Uninstall
           </button>
@@ -62,7 +64,7 @@ const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
           type="button"
           id="install-copy-btn"
           data-copy-target="cmd-one-cmd"
-          class="copy-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-surface-dim border border-outline text-on-surface-variant hover:text-on-surface transition-colors duration-state-change cursor-pointer"
+          class="copy-btn inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-sm bg-surface-dim border border-outline text-on-surface-variant hover:text-on-surface transition-colors duration-state-change shrink-0 cursor-pointer"
         >
           <Icon name="copy" size={14} class="copy-icon-default" />
           <Icon name="check" size={14} class="copy-icon-done hidden text-emerald-green" />
@@ -71,12 +73,12 @@ const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
       </div>
 
       <!-- Panel 1: One-Command Install -->
-      <div role="tabpanel" id="panel-one-cmd" aria-labelledby="tab-one-cmd" tabindex="0" class="install-panel p-6 bg-surface-dim font-mono text-mono-md flex flex-col gap-3">
-        <div class="flex items-start gap-2.5 text-on-surface overflow-x-auto">
+      <div role="tabpanel" id="panel-one-cmd" aria-labelledby="tab-one-cmd" tabindex="0" class="install-panel p-4 sm:p-6 bg-surface-dim font-mono text-mono-sm sm:text-mono-md flex flex-col gap-3">
+        <div class="flex items-start gap-2 text-on-surface sm:overflow-x-auto">
           <span class="text-emerald-green select-none shrink-0">$</span>
-          <code id="cmd-one-cmd" class="whitespace-nowrap">{INSTALL_CMD}</code>
+          <code id="cmd-one-cmd" class="break-all sm:whitespace-nowrap">{INSTALL_CMD}</code>
         </div>
-        <div class="border-t border-outline-subtle pt-4 mt-1 flex flex-col gap-1.5 text-on-surface-variant">
+        <div class="border-t border-outline-subtle pt-3 sm:pt-4 mt-1 flex flex-col gap-1.5 text-on-surface-variant">
           <p><span class="text-emerald-green">✓</span> Zero sudo required (isolated uv virtualenv + system GTK4/Libadwaita)</p>
           <p><span class="text-emerald-green">✓</span> GNOME Activities icon &amp; desktop entry installed</p>
           <p><span class="text-emerald-green">✓</span> CLI linked to <span class="text-on-surface">~/.local/bin/turbodm</span></p>
@@ -86,12 +88,12 @@ const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
       </div>
 
       <!-- Panel 2: Browser Extensions -->
-      <div role="tabpanel" id="panel-browser-ext" aria-labelledby="tab-browser-ext" tabindex="0" hidden class="install-panel p-6 bg-surface-dim font-mono text-mono-md flex flex-col gap-3">
-        <div class="flex items-start gap-2.5 text-on-surface overflow-x-auto">
+      <div role="tabpanel" id="panel-browser-ext" aria-labelledby="tab-browser-ext" tabindex="0" hidden class="install-panel hidden p-4 sm:p-6 bg-surface-dim font-mono text-mono-sm sm:text-mono-md flex flex-col gap-3">
+        <div class="flex items-start gap-2 text-on-surface sm:overflow-x-auto">
           <span class="text-adwaita-blue select-none shrink-0">→</span>
-          <code id="cmd-browser-ext" class="whitespace-nowrap">{EXT_CMD}</code>
+          <code id="cmd-browser-ext" class="break-all sm:whitespace-nowrap">{EXT_CMD}</code>
         </div>
-        <div class="border-t border-outline-subtle pt-4 mt-1 flex flex-col gap-2 text-on-surface-variant">
+        <div class="border-t border-outline-subtle pt-3 sm:pt-4 mt-1 flex flex-col gap-2 text-on-surface-variant">
           <p><span class="text-emerald-green">✓</span> <strong class="text-on-surface font-medium">Google Chrome:</strong> Open <span class="text-adwaita-blue">chrome://extensions</span> → Enable Developer Mode → Load unpacked → <span class="text-on-surface">turbodm/extensions/chrome</span></p>
           <p><span class="text-emerald-green">✓</span> <strong class="text-on-surface font-medium">Mozilla Firefox:</strong> Open <span class="text-adwaita-blue">about:debugging#/runtime/this-firefox</span> → Load Temporary Add-on → <span class="text-on-surface">turbodm/extensions/firefox/manifest.json</span></p>
           <p><span class="text-emerald-green">✓</span> Native Messaging manifests are already pre-registered by <span class="text-on-surface">./install.sh</span></p>
@@ -99,12 +101,12 @@ const UNINSTALL_CMD = 'cd turbodm && ./uninstall.sh';
       </div>
 
       <!-- Panel 3: Uninstall -->
-      <div role="tabpanel" id="panel-uninstall" aria-labelledby="tab-uninstall" tabindex="0" hidden class="install-panel p-6 bg-surface-dim font-mono text-mono-md flex flex-col gap-3">
-        <div class="flex items-start gap-2.5 text-on-surface overflow-x-auto">
+      <div role="tabpanel" id="panel-uninstall" aria-labelledby="tab-uninstall" tabindex="0" hidden class="install-panel hidden p-4 sm:p-6 bg-surface-dim font-mono text-mono-sm sm:text-mono-md flex flex-col gap-3">
+        <div class="flex items-start gap-2 text-on-surface">
           <span class="text-emerald-green select-none shrink-0">$</span>
-          <code id="cmd-uninstall" class="whitespace-nowrap">{UNINSTALL_CMD}</code>
+          <code id="cmd-uninstall">{UNINSTALL_CMD}</code>
         </div>
-        <div class="border-t border-outline-subtle pt-4 mt-1 flex flex-col gap-1.5 text-on-surface-variant">
+        <div class="border-t border-outline-subtle pt-3 sm:pt-4 mt-1 flex flex-col gap-1.5 text-on-surface-variant">
           <p><span class="text-emerald-green">✓</span> Cleanly removes <span class="text-on-surface">~/.local/bin/turbodm</span>, desktop entry, icon &amp; native hosts</p>
           <p><span class="text-emerald-green">✓</span> Preserves all your files in <span class="text-on-surface">~/Downloads</span> and SQLite download history</p>
         </div>

@@ -5,10 +5,10 @@ const REPO_URL = 'https://github.com/TahaHamdy-MernDev/turbodm';
 ---
 
 <header class="sticky top-0 z-50 w-full bg-surface/95 backdrop-blur-sm border-b border-outline">
-  <div class="max-w-[1280px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-6">
+  <div class="max-w-[1280px] mx-auto px-4 sm:px-8 h-14 sm:h-16 flex items-center justify-between gap-3 sm:gap-6">
     <!-- Left: Logo + Wordmark + Badge -->
-    <a href="#" class="flex items-center gap-3 shrink-0 group">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="shrink-0">
+    <a href="#" class="flex items-center gap-2 sm:gap-3 shrink-0 group">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="shrink-0 sm:w-8 sm:h-8">
         <rect width="32" height="32" rx="8" fill="#3584E4" />
         <path d="M16 6.5V17.5M16 17.5L11.5 13M16 17.5L20.5 13" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
         <rect x="6.5" y="22.5" width="5.5" height="3" rx="1" fill="#2EC27E" />
@@ -17,13 +17,14 @@ const REPO_URL = 'https://github.com/TahaHamdy-MernDev/turbodm';
       </svg>
       <div class="flex items-center gap-2">
         <span class="font-title text-title-lg text-on-surface tracking-tight">TurboDM</span>
-        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container border border-outline font-label text-label-sm text-on-surface-variant whitespace-nowrap">
-          v1.0 • Fedora Native
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container border border-outline font-label text-label-sm text-on-surface-variant whitespace-nowrap">
+          <span class="sm:hidden">v1.0</span>
+          <span class="hidden sm:inline">v1.0 • Fedora Native</span>
         </span>
       </div>
     </a>
 
-    <!-- Center: Clean Text Links -->
+    <!-- Center: Desktop Links -->
     <nav aria-label="Primary navigation" class="hidden lg:flex items-center gap-8">
       <a href="#features" class="font-label text-label-lg text-on-surface-variant hover:text-on-surface transition-colors duration-state-change whitespace-nowrap">Features</a>
       <a href="#how-it-works" class="font-label text-label-lg text-on-surface-variant hover:text-on-surface transition-colors duration-state-change whitespace-nowrap">How It Works</a>
@@ -32,7 +33,7 @@ const REPO_URL = 'https://github.com/TahaHamdy-MernDev/turbodm';
       <a href={REPO_URL} target="_blank" rel="noopener noreferrer" class="font-label text-label-lg text-on-surface-variant hover:text-on-surface transition-colors duration-state-change whitespace-nowrap">GitHub</a>
     </nav>
 
-    <!-- Right: GitHub Star Link + Primary CTA -->
+    <!-- Right: Star + CTA + Mobile Menu Toggle -->
     <div class="flex items-center gap-2 shrink-0">
       <a
         href={REPO_URL}
@@ -42,14 +43,51 @@ const REPO_URL = 'https://github.com/TahaHamdy-MernDev/turbodm';
         aria-label="Star TurboDM on GitHub"
       >
         <Icon name="star" size={15} class="text-amber-warning" />
-        <span id="gh-star-count" class="font-mono text-mono-md tabular-nums">Star</span>
+        <span class="gh-star-count font-mono text-mono-md tabular-nums">Star</span>
       </a>
       <a
         href="#install"
-        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-on-primary hover:bg-adwaita-blue transition-colors duration-state-change whitespace-nowrap font-label text-label-lg"
+        class="inline-flex items-center justify-center gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg bg-primary text-on-primary hover:bg-adwaita-blue transition-colors duration-state-change whitespace-nowrap font-label text-label-sm sm:text-label-lg"
       >
-        Install for Fedora
+        <span class="sm:hidden">Install</span>
+        <span class="hidden sm:inline">Install for Fedora</span>
       </a>
+      <button
+        type="button"
+        id="mobile-menu-btn"
+        aria-expanded="false"
+        aria-controls="mobile-menu-drawer"
+        aria-label="Toggle navigation menu"
+        class="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container border border-outline text-on-surface-variant hover:text-on-surface transition-colors duration-state-change cursor-pointer"
+      >
+        <Icon name="menu" size={19} class="menu-icon-open" />
+        <Icon name="x" size={19} class="menu-icon-close hidden" />
+      </button>
     </div>
   </div>
+
+  <!-- Collapsible Mobile Navigation Drawer -->
+  <nav
+    id="mobile-menu-drawer"
+    aria-label="Mobile navigation"
+    hidden
+    class="hidden lg:hidden border-t border-outline bg-surface-container px-4 py-4 flex flex-col gap-2"
+  >
+    <a href="#features" class="mobile-nav-link font-label text-label-lg text-on-surface-variant hover:text-on-surface py-1.5">Features</a>
+    <a href="#how-it-works" class="mobile-nav-link font-label text-label-lg text-on-surface-variant hover:text-on-surface py-1.5">How It Works</a>
+    <a href="#browser-extensions" class="mobile-nav-link font-label text-label-lg text-on-surface-variant hover:text-on-surface py-1.5">Browser Extensions</a>
+    <a href="#install" class="mobile-nav-link font-label text-label-lg text-on-surface-variant hover:text-on-surface py-1.5">Install</a>
+    <a
+      href={REPO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="flex items-center justify-between pt-3 mt-1 border-t border-outline text-on-surface"
+    >
+      <span class="font-label text-label-lg">GitHub Repository</span>
+      <span class="inline-flex items-center gap-1 font-mono text-mono-sm tabular-nums text-on-surface-variant">
+        <Icon name="star" size={14} class="text-amber-warning" />
+        <span class="gh-star-count">Star</span>
+      </span>
+    </a>
+  </nav>
 </header>

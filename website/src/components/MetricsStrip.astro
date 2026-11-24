@@ -1,21 +1,33 @@
 ---
 const metrics = [
-  { value: 'Up to 32x', label: 'Parallel Connections', color: 'text-on-surface' },
-  { value: '0 MB Overhead', label: 'Atomic os.pwrite Disk I/O', color: 'text-emerald-green' },
-  { value: '~40 MB RAM', label: 'Native GTK4 Footprint (No Electron)', color: 'text-adwaita-blue' },
-  { value: '100% Free', label: 'Open Source MIT License', color: 'text-on-surface' },
+  { value: 'Up to 32x', mobileValue: 'Up to 32x', label: 'Parallel Connections', mobileLabel: 'Parallel Connections', color: 'text-on-surface' },
+  { value: '0 MB Overhead', mobileValue: '0 MB', label: 'Atomic os.pwrite Disk I/O', mobileLabel: 'Atomic os.pwrite I/O', color: 'text-emerald-green' },
+  { value: '~40 MB RAM', mobileValue: '40 MB RAM', label: 'Native GTK4 Footprint (No Electron)', mobileLabel: 'Native GTK4 Footprint', color: 'text-adwaita-blue' },
+  { value: '100% Free', mobileValue: '100% Free', label: 'Open Source MIT License', mobileLabel: 'MIT Open Source', color: 'text-on-surface' },
 ];
 ---
 
 <section class="border-b border-outline bg-surface-container">
-  <div class="max-w-[1280px] mx-auto px-4 sm:px-8">
-    <div class="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-outline">
-      {metrics.map((m) => (
-        <div class="py-8 px-4 flex flex-col gap-1">
-          <span class={`font-mono text-headline-lg-mobile md:text-headline-lg tabular-nums ${m.color}`}>
-            {m.value}
+  <div class="max-w-[1280px] mx-auto lg:px-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4">
+      {metrics.map((m, idx) => (
+        <div
+          class={[
+            'p-4 lg:py-8 lg:px-4 flex flex-col gap-1 border-outline',
+            idx < 2 ? 'border-b lg:border-b-0' : '',
+            idx % 2 === 0 ? 'border-r' : '',
+            idx > 0 ? 'lg:border-l' : '',
+            idx === 2 ? 'lg:border-r-0' : '',
+          ].join(' ')}
+        >
+          <span class={`font-mono text-headline-md md:text-headline-lg tabular-nums ${m.color}`}>
+            <span class="sm:hidden">{m.mobileValue}</span>
+            <span class="hidden sm:inline">{m.value}</span>
           </span>
-          <span class="font-body text-body-sm text-on-surface-variant">{m.label}</span>
+          <span class="font-body text-body-sm text-on-surface-variant">
+            <span class="sm:hidden">{m.mobileLabel}</span>
+            <span class="hidden sm:inline">{m.label}</span>
+          </span>
         </div>
       ))}
     </div>

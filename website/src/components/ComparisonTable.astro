@@ -2,58 +2,103 @@
 const rows = [
   {
     capability: 'Dynamic Segmentation',
+    mobileCap: 'Dynamic Segmentation',
     turbodm: 'Up to 32x + Auto-Split',
+    mobileBadge: '32x + Auto-Split',
     turbodmMono: true,
     browser: 'Single stream (1x)',
     electron: 'Static chunks only',
+    mobileElectron: 'Static chunks',
   },
   {
     capability: 'RAM Usage',
+    mobileCap: 'RAM Usage',
     turbodm: '~40 MB',
+    mobileBadge: '~40 MB',
     turbodmMono: true,
     browser: 'Tab-bound',
     electron: '350–600 MB',
+    mobileElectron: '350–600 MB',
     electronWarn: true,
   },
   {
     capability: 'Native Wayland Look',
+    mobileCap: 'Native Wayland Look',
     turbodm: 'GTK4 + Libadwaita',
+    mobileBadge: 'GTK4 + Libadwaita',
     browser: 'Browser toolbar',
     electron: 'XWayland / Chromium',
+    mobileElectron: 'XWayland',
   },
   {
     capability: 'YouTube / HLS Quality Picker',
+    mobileCap: 'YouTube / HLS Picker',
     turbodm: 'Built-in (yt-dlp + ffmpeg)',
+    mobileBadge: 'yt-dlp + ffmpeg',
     browser: 'None',
     electron: 'Plugin required',
+    mobileElectron: 'Plugin required',
   },
   {
     capability: 'Crash-Safe Resume',
+    mobileCap: 'Crash-Safe Resume',
     turbodm: 'SQLite WAL + ETag Verified',
+    mobileBadge: 'SQLite + ETag',
     browser: 'Fails on restart',
     electron: 'Partial',
+    mobileElectron: 'Partial',
   },
   {
     capability: 'Auto-Category Folders',
+    mobileCap: 'Auto-Category Folders',
     turbodm: '5 IDM XDG Categories',
+    mobileBadge: '5 XDG Folders',
     browser: 'Single flat folder',
     electron: 'Manual rules',
+    mobileElectron: 'Manual rules',
   },
 ];
 ---
 
-<section class="py-section border-b border-outline">
-  <div class="max-w-[1160px] mx-auto px-4 sm:px-8 flex flex-col gap-8">
-    <div class="text-center flex flex-col gap-2">
+<section class="py-12 md:py-section border-b border-outline">
+  <div class="max-w-[1160px] mx-auto px-4 sm:px-8 flex flex-col gap-6 md:gap-8">
+    <div class="text-left md:text-center flex flex-col gap-1.5 md:gap-2">
       <h2 class="font-headline text-headline-lg-mobile md:text-headline-lg text-on-surface">
         How TurboDM Compares
       </h2>
-      <p class="font-body text-body-md text-on-surface-variant">
+      <p class="font-body text-body-sm md:text-body-md text-on-surface-variant">
         Built for Linux users who want full line-rate saturation without Electron memory tax.
       </p>
     </div>
 
-    <div class="bg-surface-container border border-outline rounded-md overflow-hidden">
+    <!-- Mobile-Native Stacked Comparison Cards (< md) -->
+    <div class="flex flex-col gap-2.5 md:hidden">
+      {rows.map((r) => (
+        <article class="bg-surface-container border border-outline rounded-md overflow-hidden">
+          <div class="p-4 flex items-center justify-between gap-2">
+            <span class="font-title text-title-md text-on-surface">{r.mobileCap}</span>
+            <span class="px-2 py-0.5 rounded bg-primary-container border border-adwaita-blue font-mono text-mono-sm text-emerald-green tabular-nums shrink-0">
+              {r.mobileBadge}
+            </span>
+          </div>
+          <div class="grid grid-cols-2 divide-x divide-outline border-t border-outline bg-surface-dim">
+            <div class="px-4 py-2.5 flex flex-col gap-0.5">
+              <span class="font-label text-label-sm text-on-surface-variant">Default Browser</span>
+              <span class="font-body text-body-sm text-on-surface-variant">{r.browser}</span>
+            </div>
+            <div class="px-4 py-2.5 flex flex-col gap-0.5">
+              <span class="font-label text-label-sm text-on-surface-variant">Electron Apps</span>
+              <span class={r.electronWarn ? 'font-mono text-mono-sm text-amber-warning tabular-nums' : 'font-body text-body-sm text-on-surface-variant'}>
+                {r.mobileElectron}
+              </span>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <!-- Desktop 4-Column Table (md+) -->
+    <div class="hidden md:block bg-surface-container border border-outline rounded-md overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>

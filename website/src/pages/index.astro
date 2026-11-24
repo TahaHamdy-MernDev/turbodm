@@ -25,7 +25,30 @@ import Footer from '../components/Footer.astro';
   <Footer />
 
   <script>
-    // 1. Install Tabs + Dynamic Copy Target Sync
+    // 1. Mobile Navigation Drawer Toggle
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const menuDrawer = document.getElementById('mobile-menu-drawer');
+    const setMenuOpen = (open: boolean) => {
+      if (!menuBtn || !menuDrawer) return;
+      menuBtn.setAttribute('aria-expanded', String(open));
+      menuDrawer.classList.toggle('hidden', !open);
+      if (open) {
+        menuDrawer.removeAttribute('hidden');
+      } else {
+        menuDrawer.setAttribute('hidden', '');
+      }
+      menuBtn.querySelector('.menu-icon-open')?.classList.toggle('hidden', open);
+      menuBtn.querySelector('.menu-icon-close')?.classList.toggle('hidden', !open);
+    };
+    menuBtn?.addEventListener('click', () => {
+      const currentlyOpen = menuBtn.getAttribute('aria-expanded') === 'true';
+      setMenuOpen(!currentlyOpen);
+    });
+    document.querySelectorAll('.mobile-nav-link').forEach((link) => {
+      link.addEventListener('click', () => setMenuOpen(false));
+    });
+
+    // 2. Install Tabs + Dynamic Copy Target Sync
     const tabs = document.querySelectorAll<HTMLButtonElement>('.install-tab');
     const panels = document.querySelectorAll<HTMLElement>('.install-panel');
     const installCopyBtn = document.getElementById('install-copy-btn');
@@ -47,8 +70,10 @@ import Footer from '../components/Footer.astro';
         panels.forEach((panel) => {
           if (panel.id === targetId) {
             panel.removeAttribute('hidden');
+            panel.classList.remove('hidden');
           } else {
             panel.setAttribute('hidden', '');
+            panel.classList.add('hidden');
           }
         });
 
@@ -58,7 +83,7 @@ import Footer from '../components/Footer.astro';
       });
     });
 
-    // 2. Copy-to-Clipboard with Visual Confirmation
+    // 3. Copy-to-Clipboard with Visual Confirmation
     document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const targetId = btn.getAttribute('data-copy-target');
@@ -68,7 +93,7 @@ import Footer from '../components/Footer.astro';
         try {
           await navigator.clipboard.writeText(text);
         } catch {
-          // Fallback ignored silently if clipboard blocked
+          // Ignore if clipboard blocked
         }
         const defIcon = btn.querySelector('.copy-icon-default');
         const doneIcon = btn.querySelector('.copy-icon-done');
@@ -84,20 +109,22 @@ import Footer from '../components/Footer.astro';
       });
     });
 
-    // 3. Optional Live GitHub Star Count Hydration (non-blocking)
-    const starEl = document.getElementById('gh-star-count');
-    if (starEl) {
+    // 4. Optional Live GitHub Star Count Hydration (Desktop + Mobile Drawer)
+    const starEls = document.querySelectorAll<HTMLElement>('.gh-star-count');
+    if (starEls.length > 0) {
       fetch('https://api.github.com/repos/TahaHamdy-MernDev/turbodm')
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
-          if (data && typeof data.stargazers_count === 'number') {
-            starEl.textContent = data.stargazers_count > 0 ? String(data.stargazers_count) : 'Star';
+          if (data && typeof data.stargazers_count === 'number' && data.stargazers_count > 0) {
+            starEls.forEach((el) => {
+              el.textContent = String(data.stargazers_count);
+            });
           }
         })
         .catch(() => {});
     }
 
-    // 4. Interactive 16-Segment Dynamic Segmentation Simulator (respects reduced motion)
+    // 5. Interactive 16-Segment Dynamic Segmentation Simulator (Syncs Mobile + Desktop)
     const replayBtn = document.getElementById('sim-replay-btn');
     const gridEl = document.getElementById('sim-segment-grid');
     if (replayBtn && gridEl) {
@@ -105,10 +132,11 @@ import Footer from '../components/Footer.astro';
       const pctBadge = document.getElementById('sim-pct-badge');
       const speedEl = document.getElementById('sim-speed');
       const statusEl = document.getElementById('sim-status-label');
-      const rowBar = document.getElementById('hero-row1-bar');
-      const rowPct = document.getElementById('hero-row1-pct');
-      const rowSize = document.getElementById('hero-row1-size');
-      const rowEta = document.getElementById('hero-row1-eta');
+      const rowBars = document.querySelectorAll<HTMLElement>('.hero-row1-bar');
+      const rowSizes = document.querySelectorAll<HTMLElement>('.hero-row1-size');
+      const rowPctDesktop = document.getElementById('hero-row1-pct');
+      const rowEtaDesktop = document.getElementById('hero-row1-eta');
+      const rowPctEtaMobile = document.querySelector<HTMLElement>('.hero-row1-pct-eta');
 
       const startSim = () => {
         if (timer) window.clearInterval(timer);
@@ -120,7 +148,6 @@ import Footer from '../components/Footer.astro';
           for (let i = 0; i < 16; i++) {
             if (segs[i] >= 100) doneCount++;
           }
-          // Dynamic segmentation boost: finished workers accelerate remaining slow segments
           const boost = 1 + doneCount * 0.14;
           let sum = 0;
           for (let i = 0; i < 16; i++) {
@@ -143,7 +170,7 @@ import Footer from '../components/Footer.astro';
                 fill.classList.remove('bg-emerald-green');
                 if (!tip) {
                   tip = document.createElement('div');
-                  tip.className = 'seg-tip w-1 h-full bg-cyan-tip shrink-0';
+                  tip.className = 'seg-tip w-0.5 sm:w-1 h-full bg-cyan-tip shrink-0';
                   cell.appendChild(tip);
                 }
               }
@@ -159,12 +186,13 @@ import Footer from '../components/Footer.astro';
           if (speedEl) speedEl.textContent = avg >= 100 ? 'Completed' : `${rate.toFixed(1)} MB/s`;
           if (statusEl) {
             statusEl.textContent =
-              avg >= 100 ? 'All 16 Segments Merged (0 MB Copy)' : doneCount > 0 ? `Dynamic Split Active (${doneCount} stolen)` : '16 Parallel Streams';
+              avg >= 100 ? 'All 16 Segments Merged' : doneCount > 0 ? `Dynamic Split (${doneCount} stolen)` : '16 Parallel Streams';
           }
-          if (rowBar) rowBar.style.width = `${avg.toFixed(1)}%`;
-          if (rowPct) rowPct.textContent = avg >= 100 ? '100% • Done' : `${avg.toFixed(1)}% • 16x`;
-          if (rowSize) rowSize.textContent = `${gb} / 2.41 GB`;
-          if (rowEta) rowEta.textContent = eta;
+          rowBars.forEach((b) => { b.style.width = `${avg.toFixed(1)}%`; });
+          rowSizes.forEach((s) => { s.textContent = `${gb} / 2.41 GB`; });
+          if (rowPctDesktop) rowPctDesktop.textContent = avg >= 100 ? '100% • Done' : `${avg.toFixed(1)}% • 16x`;
+          if (rowEtaDesktop) rowEtaDesktop.textContent = eta;
+          if (rowPctEtaMobile) rowPctEtaMobile.textContent = avg >= 100 ? '100% • Done' : `${avg.toFixed(1)}% • 16x • ${eta}`;
 
           if (avg >= 100 && timer) {
             window.clearInterval(timer);

@@ -2,28 +2,31 @@
 const REPO_URL = 'https://github.com/TahaHamdy-MernDev/turbodm';
 ---
 
-<footer class="border-t border-outline bg-surface-dim py-8">
-  <div class="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-    <div class="flex items-center gap-3">
-      <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+<footer class="border-t border-outline bg-surface-dim py-6 sm:py-8">
+  <div class="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
+    <div class="flex items-center gap-2.5 sm:gap-3">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true" class="sm:w-6 sm:h-6">
         <rect width="32" height="32" rx="8" fill="#3584E4" />
         <path d="M16 6.5V17.5M16 17.5L11.5 13M16 17.5L20.5 13" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
         <rect x="6.5" y="22.5" width="5.5" height="3" rx="1" fill="#2EC27E" />
         <rect x="13.25" y="22.5" width="5.5" height="3" rx="1" fill="#73FCB2" />
         <rect x="20" y="22.5" width="5.5" height="3" rx="1" fill="#D5E3FF" />
       </svg>
-      <div>
+      <div class="flex items-center gap-2">
         <span class="font-title text-title-md text-on-surface">TurboDM</span>
-        <span class="font-body text-body-sm text-on-surface-variant ml-2">High-speed native download manager for Fedora Linux.</span>
+        <span class="font-body text-body-sm text-on-surface-variant sm:hidden">Fedora Native</span>
+        <span class="font-body text-body-sm text-on-surface-variant hidden sm:inline">High-speed native download manager for Fedora Linux.</span>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-6 font-body text-body-sm text-on-surface-variant">
+    <div class="flex flex-wrap items-center gap-4 sm:gap-6 font-body text-body-sm text-on-surface-variant">
       <a href={REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-on-surface transition-colors">GitHub</a>
       <a href={`${REPO_URL}/releases`} target="_blank" rel="noopener noreferrer" class="hover:text-on-surface transition-colors">Releases</a>
       <a href={`${REPO_URL}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer" class="hover:text-on-surface transition-colors">MIT License</a>
       <a href="#install" class="hover:text-on-surface transition-colors">Fedora Setup</a>
-      <span>© 2026 TahaHamdy-MernDev</span>
+      <span class="hidden sm:inline">© 2026 TahaHamdy-MernDev</span>
     </div>
+
+    <p class="sm:hidden font-body text-body-sm text-on-surface-variant">© 2026 TahaHamdy-MernDev</p>
   </div>
 </footer>
