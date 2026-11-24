@@ -1,0 +1,430 @@
+---
+import Icon from './Icon.astro';
+
+const REPO_URL = 'https://github.com/TahaHamdy-MernDev/turbodm';
+const CLONE_CMD = 'git clone https://github.com/TahaHamdy-MernDev/turbodm.git && cd turbodm && ./install.sh';
+
+const initialSegments = [
+  100, 100, 82, 100, 74, 100, 100, 68,
+  100, 86, 100, 52, 100, 100, 61, 100,
+];
+---
+
+<section class="pt-12 pb-22 md:pb-28 border-b border-outline relative overflow-hidden">
+  <div class="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col items-center text-center gap-6">
+    <!-- Top Eyebrow Pill -->
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface-container border border-outline">
+      <span class="w-2 h-2 rounded-full bg-emerald-green" aria-hidden="true"></span>
+      <span class="font-label text-label-sm text-on-surface-variant">
+        GTK4 + Libadwaita • Native Wayland • MIT Open Source
+      </span>
+    </div>
+
+    <!-- Bold H1 Headline -->
+    <h1 class="font-display text-display-lg-mobile md:text-display-lg text-on-surface max-w-4xl text-balance">
+      IDM-Class Download Speed. Built Natively for Fedora Linux.
+    </h1>
+
+    <!-- Concise Subtitle -->
+    <p class="font-body text-body-lg text-on-surface-variant max-w-2xl text-pretty">
+      Accelerate files up to 16–32 parallel connections with real-time dynamic segmentation, rock-solid pause &amp; resume, yt-dlp + ffmpeg video grabbing, and Chrome &amp; Firefox integration.
+    </p>
+
+    <!-- Primary CTA Row -->
+    <div class="flex flex-wrap items-center justify-center gap-4 pt-1">
+      <a
+        href="#install"
+        class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-on-primary hover:bg-adwaita-blue transition-colors duration-state-change font-label text-label-lg"
+      >
+        <Icon name="terminal" size={18} />
+        <span>Install on Fedora (1 Command)</span>
+      </a>
+
+      <a
+        href={REPO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-surface-container text-on-surface border border-outline hover:bg-surface-container-high hover:border-on-surface-variant transition-colors duration-state-change font-label text-label-lg"
+      >
+        <Icon name="code" size={18} />
+        <span>View on GitHub</span>
+      </a>
+    </div>
+
+    <!-- Compact Inline Copyable Bash Snippet Bar -->
+    <div class="inline-flex items-center gap-3 px-4 py-2 rounded-lg bg-surface-dim border border-outline max-w-full">
+      <span class="font-mono text-mono-md text-emerald-green select-none">$</span>
+      <code id="hero-cmd" class="font-mono text-mono-md text-on-surface truncate">
+        {CLONE_CMD}
+      </code>
+      <button
+        type="button"
+        data-copy-target="hero-cmd"
+        aria-label="Copy install command"
+        class="copy-btn inline-flex items-center justify-center w-8 h-8 rounded-lg bg-surface-container border border-outline text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-state-change shrink-0 cursor-pointer"
+      >
+        <Icon name="copy" size={15} class="copy-icon-default" />
+        <Icon name="check" size={15} class="copy-icon-done hidden text-emerald-green" />
+      </button>
+    </div>
+
+    <!-- HERO VISUAL: GTK4 / Libadwaita Desktop Mockup + Overlapping Download Progress Dialog -->
+    <div class="w-full mt-6 relative text-left">
+      <!-- Subtle Adwaita Blue Ambient Glow Behind Window -->
+      <div class="absolute inset-x-12 -top-4 bottom-8 rounded-xl bg-adwaita-blue/15 blur-3xl pointer-events-none" aria-hidden="true"></div>
+
+      <!-- Main Libadwaita Application Window -->
+      <div class="relative bg-surface-container border border-outline rounded-md shadow-2xl overflow-hidden">
+        <!-- Libadwaita Headerbar -->
+        <div class="h-11 px-4 bg-surface-container-high border-b border-outline flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <rect width="32" height="32" rx="8" fill="#3584E4" />
+                <path d="M16 6.5V17.5M16 17.5L11.5 13M16 17.5L20.5 13" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+                <rect x="6.5" y="22.5" width="5.5" height="3" rx="1" fill="#2EC27E" />
+                <rect x="13.25" y="22.5" width="5.5" height="3" rx="1" fill="#73FCB2" />
+                <rect x="20" y="22.5" width="5.5" height="3" rx="1" fill="#D5E3FF" />
+              </svg>
+              <span class="font-label text-label-lg text-on-surface">TurboDM</span>
+            </div>
+            <span class="hidden sm:inline-flex px-2 py-0.5 rounded bg-surface-dim border border-outline font-mono text-mono-sm text-on-surface-variant">
+              Wayland • GTK 4.24
+            </span>
+          </div>
+
+          <!-- Search + Window Controls -->
+          <div class="flex items-center gap-2">
+            <div class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-dim border border-outline text-on-surface-variant">
+              <Icon name="search" size={14} />
+              <span class="font-body text-body-sm">Filter downloads...</span>
+            </div>
+            <div class="flex items-center gap-1.5 pl-2" aria-hidden="true">
+              <span class="w-3 h-3 rounded-full bg-surface border border-outline inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-surface border border-outline inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-surface-container border border-on-surface-variant/40 inline-block"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- IDM-Inspired Icon Toolbar -->
+        <div class="px-4 py-2 bg-surface-container border-b border-outline flex flex-wrap items-center gap-1.5">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-primary text-on-primary font-label text-label-sm">
+            <Icon name="link" size={14} />
+            Add URL
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-surface-container-high border border-outline text-on-surface font-label text-label-sm">
+            <Icon name="play" size={13} class="text-emerald-green" />
+            Resume
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-surface-container-high border border-outline text-on-surface-variant font-label text-label-sm">
+            <Icon name="pause" size={13} class="text-amber-warning" />
+            Stop
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-surface-container-high border border-outline text-on-surface-variant font-label text-label-sm">
+            <Icon name="stop" size={14} />
+            Stop All
+          </span>
+          <span class="w-px h-5 bg-outline mx-1 hidden sm:inline-block" aria-hidden="true"></span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-on-surface-variant font-label text-label-sm">
+            <Icon name="layers" size={14} />
+            Batch
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-on-surface-variant font-label text-label-sm">
+            <Icon name="clock" size={14} />
+            Scheduler
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-on-surface-variant font-label text-label-sm">
+            <Icon name="sliders" size={14} />
+            Options
+          </span>
+
+          <div class="ml-auto hidden md:flex items-center gap-2">
+            <span id="hero-total-speed" class="font-mono text-mono-sm text-emerald-green tabular-nums">Total: 62.8 MB/s</span>
+          </div>
+        </div>
+
+        <!-- App Body: Left Sidebar + Main Download List -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 min-h-[430px]">
+          <!-- Left Sidebar: Categories & Queues -->
+          <aside class="lg:col-span-3 bg-surface-dim border-b lg:border-b-0 lg:border-r border-outline p-4 flex flex-col gap-6">
+            <div>
+              <p class="font-label text-label-sm text-on-surface-variant uppercase tracking-wider px-2 mb-2">Categories</p>
+              <ul class="flex flex-col gap-1">
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm bg-primary-container text-on-primary-container">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <Icon name="folder" size={15} />
+                    All Downloads
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums">24</span>
+                </li>
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm text-on-surface-variant">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <Icon name="archive" size={15} />
+                    Compressed
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums">5</span>
+                </li>
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm text-on-surface-variant">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <Icon name="file" size={15} />
+                    Documents
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums">7</span>
+                </li>
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm text-on-surface-variant">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <Icon name="music" size={15} />
+                    Music
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums">3</span>
+                </li>
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm text-on-surface-variant">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <Icon name="terminal" size={15} />
+                    Programs
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums">4</span>
+                </li>
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm text-on-surface-variant">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <Icon name="film" size={15} />
+                    Video
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums">5</span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <p class="font-label text-label-sm text-on-surface-variant uppercase tracking-wider px-2 mb-2">Queues</p>
+              <ul class="flex flex-col gap-1">
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm text-on-surface">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-green" aria-hidden="true"></span>
+                    Main Download Queue
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums text-on-surface-variant">2</span>
+                </li>
+                <li class="flex items-center justify-between px-2 py-1.5 rounded-sm text-on-surface-variant">
+                  <span class="flex items-center gap-2 font-body text-body-sm">
+                    <span class="w-2 h-2 rounded-full bg-amber-warning" aria-hidden="true"></span>
+                    Synchronization Queue
+                  </span>
+                  <span class="font-mono text-mono-sm tabular-nums">1</span>
+                </li>
+              </ul>
+            </div>
+          </aside>
+
+          <!-- Main Download List -->
+          <div class="lg:col-span-9 bg-surface flex flex-col">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-outline bg-surface-container">
+                    <th scope="col" class="px-4 py-2 font-label text-label-sm text-on-surface-variant">File Name</th>
+                    <th scope="col" class="px-4 py-2 font-label text-label-sm text-on-surface-variant">Size</th>
+                    <th scope="col" class="px-4 py-2 font-label text-label-sm text-on-surface-variant">Status</th>
+                    <th scope="col" class="px-4 py-2 font-label text-label-sm text-on-surface-variant">Transfer Rate</th>
+                    <th scope="col" class="px-4 py-2 font-label text-label-sm text-on-surface-variant">ETA</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-subtle">
+                  <!-- Row 1: Active Selected -->
+                  <tr class="bg-primary-container/25">
+                    <td class="px-4 py-4">
+                      <div class="flex items-center gap-2.5">
+                        <Icon name="disc" size={18} class="text-adwaita-blue" />
+                        <div>
+                          <p class="font-title text-title-md text-on-surface">Fedora-Workstation-45.iso</p>
+                          <div class="w-40 h-1.5 bg-surface-container-high rounded-full overflow-hidden mt-1">
+                            <div id="hero-row1-bar" class="h-full bg-adwaita-blue rounded-full transition-all duration-300" style="width: 76.3%"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface tabular-nums whitespace-nowrap">
+                      <span id="hero-row1-size">1.84 / 2.41 GB</span>
+                    </td>
+                    <td class="px-4 py-4">
+                      <span id="hero-row1-pct" class="inline-flex items-center px-2 py-0.5 rounded bg-primary-container text-on-primary-container font-mono text-mono-sm tabular-nums whitespace-nowrap">
+                        76.3% • 16x
+                      </span>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-emerald-green tabular-nums whitespace-nowrap">
+                      <span id="hero-row1-speed">48.6 MB/s</span>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums">
+                      <span id="hero-row1-eta">12s</span>
+                    </td>
+                  </tr>
+
+                  <!-- Row 2: Active Video -->
+                  <tr>
+                    <td class="px-4 py-4">
+                      <div class="flex items-center gap-2.5">
+                        <Icon name="film" size={18} class="text-adwaita-blue" />
+                        <div>
+                          <p class="font-title text-title-md text-on-surface">4K-Tutorial-Course.mp4</p>
+                          <div class="w-40 h-1.5 bg-surface-container-high rounded-full overflow-hidden mt-1">
+                            <div class="w-1/2 h-full bg-emerald-green rounded-full"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface tabular-nums whitespace-nowrap">892 MB / 1.65 GB</td>
+                    <td class="px-4 py-4">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded bg-primary-container text-on-primary-container font-mono text-mono-sm tabular-nums whitespace-nowrap">
+                        54.0% • 16x
+                      </span>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-emerald-green tabular-nums whitespace-nowrap">14.2 MB/s</td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums">55s</td>
+                  </tr>
+
+                  <!-- Row 3: Completed -->
+                  <tr>
+                    <td class="px-4 py-4">
+                      <div class="flex items-center gap-2.5">
+                        <Icon name="archive" size={18} class="text-emerald-green" />
+                        <p class="font-title text-title-md text-on-surface">backup-archive.tar.zst</p>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums whitespace-nowrap">4.12 GB</td>
+                    <td class="px-4 py-4">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success-container text-on-success-container font-label text-label-sm">
+                        <Icon name="checkCircle" size={13} />
+                        Completed
+                      </span>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums">—</td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums">Done</td>
+                  </tr>
+
+                  <!-- Row 4: Paused -->
+                  <tr>
+                    <td class="px-4 py-4">
+                      <div class="flex items-center gap-2.5">
+                        <Icon name="package" size={18} class="text-amber-warning" />
+                        <p class="font-title text-title-md text-on-surface">SDK-Tools.rpm</p>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums whitespace-nowrap">148 / 310 MB</td>
+                    <td class="px-4 py-4">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warning-container text-on-warning-container font-label text-label-sm">
+                        <Icon name="pauseCircle" size={13} />
+                        Paused
+                      </span>
+                    </td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums">0 KB/s</td>
+                    <td class="px-4 py-4 font-mono text-mono-md text-on-surface-variant tabular-nums">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OVERLAPPING SIGNATURE FLOATING "DOWNLOAD PROGRESS" DIALOG (Bottom-Right) -->
+      <div class="mt-6 lg:mt-0 lg:absolute lg:-bottom-12 lg:right-6 w-full lg:w-[540px] bg-surface-container border border-adwaita-blue/70 rounded-md shadow-2xl overflow-hidden z-20">
+        <!-- Dialog Header -->
+        <div class="px-4 py-2.5 bg-surface-container-high border-b border-outline flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2 h-2 rounded-full bg-emerald-green shrink-0" aria-hidden="true"></span>
+            <span class="font-title text-title-md text-on-surface shrink-0">Download Progress</span>
+            <span class="font-mono text-mono-sm text-on-surface-variant truncate">Fedora-Workstation-45.iso</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span id="sim-pct-badge" class="font-mono text-mono-sm text-emerald-green tabular-nums">76.3%</span>
+            <button
+              type="button"
+              id="sim-replay-btn"
+              title="Simulate live 16-part dynamic segmentation"
+              aria-label="Replay live dynamic segmentation demo"
+              class="inline-flex items-center justify-center w-6 h-6 rounded bg-surface-dim border border-outline text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+            >
+              <Icon name="refresh" size={12} />
+            </button>
+          </div>
+        </div>
+
+        <div class="p-4 flex flex-col gap-4">
+          <!-- Telemetry Strip -->
+          <div class="grid grid-cols-3 gap-2 bg-surface-dim border border-outline-subtle rounded-lg p-2.5">
+            <div>
+              <span class="font-label text-label-sm text-on-surface-variant block">Transfer Rate</span>
+              <span id="sim-speed" class="font-mono text-mono-lg text-emerald-green tabular-nums">48.6 MB/s</span>
+            </div>
+            <div>
+              <span class="font-label text-label-sm text-on-surface-variant block">Threads</span>
+              <span class="font-mono text-mono-lg text-on-surface tabular-nums">16 connections</span>
+            </div>
+            <div>
+              <span class="font-label text-label-sm text-on-surface-variant block">Resume Capability</span>
+              <span class="font-mono text-mono-lg text-adwaita-blue">Resume: Yes</span>
+            </div>
+          </div>
+
+          <!-- 16-Segment Multi-Color Visual Progress Bar -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-label text-label-sm text-on-surface-variant">16-Segment Byte Map</span>
+              <span id="sim-status-label" class="font-mono text-mono-sm text-cyan-tip tabular-nums">Dynamic Split Active</span>
+            </div>
+            <div
+              id="sim-segment-grid"
+              class="grid gap-0.5 p-1 bg-surface-dim border border-outline rounded-sm"
+              style="grid-template-columns: repeat(16, minmax(0, 1fr));"
+            >
+              {initialSegments.map((pct, i) => (
+                <div class="h-4 rounded-xs bg-surface-container-high overflow-hidden flex" data-seg-idx={i}>
+                  <div
+                    class={`seg-fill h-full transition-all duration-200 ${pct >= 100 ? 'bg-emerald-green' : 'bg-adwaita-blue'}`}
+                    style={`width: ${pct}%`}
+                  ></div>
+                  {pct < 100 && <div class="seg-tip w-1 h-full bg-cyan-tip shrink-0"></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Compact Per-Connection Table -->
+          <div class="bg-surface-dim border border-outline-subtle rounded-sm overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-outline text-on-surface-variant">
+                  <th scope="col" class="px-2.5 py-1 font-mono text-mono-sm">Seg</th>
+                  <th scope="col" class="px-2.5 py-1 font-mono text-mono-sm">Downloaded</th>
+                  <th scope="col" class="px-2.5 py-1 font-mono text-mono-sm">Speed</th>
+                  <th scope="col" class="px-2.5 py-1 font-mono text-mono-sm">State</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-subtle font-mono text-mono-sm tabular-nums">
+                <tr>
+                  <td class="px-2.5 py-1 text-on-surface">#01</td>
+                  <td class="px-2.5 py-1 text-on-surface-variant">150.6 MB</td>
+                  <td class="px-2.5 py-1 text-emerald-green">3.4 MB/s</td>
+                  <td class="px-2.5 py-1 text-emerald-green">Done</td>
+                </tr>
+                <tr>
+                  <td class="px-2.5 py-1 text-on-surface">#03</td>
+                  <td class="px-2.5 py-1 text-on-surface-variant">121.2 MB</td>
+                  <td class="px-2.5 py-1 text-cyan-tip">4.1 MB/s</td>
+                  <td class="px-2.5 py-1 text-adwaita-blue">Receiving</td>
+                </tr>
+                <tr>
+                  <td class="px-2.5 py-1 text-on-surface">#12</td>
+                  <td class="px-2.5 py-1 text-on-surface-variant">75.3 MB</td>
+                  <td class="px-2.5 py-1 text-cyan-tip">3.8 MB/s</td>
+                  <td class="px-2.5 py-1 text-cyan-tip">Split → #01</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

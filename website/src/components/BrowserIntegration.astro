@@ -1,0 +1,121 @@
+---
+import Icon from './Icon.astro';
+---
+
+<section id="browser-extensions" class="py-section border-b border-outline">
+  <div class="max-w-[1280px] mx-auto px-4 sm:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <!-- Left Copy -->
+    <div class="lg:col-span-6 flex flex-col gap-6">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container border border-outline w-fit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.5" stroke="#3584E4" stroke-width="2" />
+          <circle cx="12" cy="12" r="4" fill="#3584E4" />
+        </svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.5" stroke="#E5A50A" stroke-width="2" />
+          <path d="M12 6C15.3 6 18 8.7 18 12C18 15.3 15.3 18 12 18" stroke="#2EC27E" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <span class="font-label text-label-sm text-on-surface-variant">Google Chrome &amp; Mozilla Firefox</span>
+      </div>
+
+      <h2 class="font-headline text-headline-lg-mobile md:text-headline-md text-on-surface text-balance">
+        Zero Annoyance Browser Integration
+      </h2>
+
+      <ul class="flex flex-col gap-4">
+        <li class="flex items-start gap-2.5">
+          <Icon name="checkCircle" size={19} class="text-emerald-green mt-0.5" />
+          <span class="font-body text-body-md text-on-surface-variant">
+            Right-click any link, image, or media for <strong class="text-on-surface font-medium">"Download with TurboDM"</strong> or grab all links on the page.
+          </span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <Icon name="checkCircle" size={19} class="text-emerald-green mt-0.5" />
+          <span class="font-body text-body-md text-on-surface-variant">
+            Floating <strong class="text-on-surface font-medium">"↓ Download this video"</strong> pill anchored neatly over HTML5, YouTube &amp; HLS players.
+          </span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <Icon name="checkCircle" size={19} class="text-emerald-green mt-0.5" />
+          <span class="font-body text-body-md text-on-surface-variant">
+            Full Cookie, Referer &amp; User-Agent forwarding via authenticated Native Messaging — auto-launches TurboDM even when closed.
+          </span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <Icon name="checkCircle" size={19} class="text-emerald-green mt-0.5" />
+          <span class="font-body text-body-md text-on-surface-variant">
+            Auto-interception is <strong class="text-on-surface font-medium">OFF by default</strong> (toggleable anytime in the popup) so you stay 100% in control.
+          </span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Right Visual: Dark Browser Viewport + Extension Popup -->
+    <div class="lg:col-span-6 relative">
+      <div class="bg-surface-container border border-outline rounded-md overflow-hidden shadow-xl">
+        <div class="px-4 py-2.5 bg-surface-container-high border-b border-outline flex items-center justify-between gap-4">
+          <div class="flex items-center gap-1.5" aria-hidden="true">
+            <span class="w-2.5 h-2.5 rounded-full bg-outline"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-outline"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-outline"></span>
+          </div>
+          <div class="flex-1 max-w-md px-3 py-1 rounded bg-surface-dim border border-outline truncate">
+            <span class="font-mono text-mono-sm text-on-surface-variant">https://fedora.stream/linux-kernel-talk</span>
+          </div>
+          <div class="w-6 h-6 rounded bg-primary-container border border-adwaita-blue flex items-center justify-center text-on-primary-container">
+            <Icon name="download" size={13} />
+          </div>
+        </div>
+
+        <div class="p-6 bg-surface-dim relative">
+          <div class="aspect-video bg-surface-container border border-outline rounded-lg relative flex items-center justify-center overflow-hidden">
+            <!-- Sleek Blue Floating Pill Anchored Top-Right -->
+            <div class="absolute top-3 right-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary text-on-primary shadow-lg border border-adwaita-blue">
+              <span class="font-label text-label-sm">↓ Download this video</span>
+              <span class="font-mono text-mono-sm text-on-primary/80" aria-hidden="true">×</span>
+            </div>
+
+            <div class="w-14 h-14 rounded-full bg-surface-container-high border border-outline flex items-center justify-center text-on-surface">
+              <Icon name="play" size={24} />
+            </div>
+
+            <div class="absolute inset-x-0 bottom-0 px-4 py-2 bg-surface/90 border-t border-outline flex items-center gap-4">
+              <span class="font-mono text-mono-sm text-on-surface-variant tabular-nums">14:22 / 42:10</span>
+              <div class="flex-1 h-1 bg-surface-container-high rounded-full overflow-hidden">
+                <div class="w-1/3 h-full bg-adwaita-blue"></div>
+              </div>
+              <span class="font-mono text-mono-sm text-on-surface-variant">1080p</span>
+            </div>
+          </div>
+
+          <!-- Compact Extension Popup Card -->
+          <div class="mt-4 sm:mt-0 sm:absolute sm:bottom-5 sm:right-5 w-full sm:w-80 bg-surface-container border border-outline rounded-md shadow-2xl p-4 flex flex-col gap-2.5">
+            <div class="flex items-center justify-between border-b border-outline pb-2">
+              <span class="font-title text-title-md text-on-surface whitespace-nowrap">TurboDM Extension</span>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-on-success-container font-label text-label-sm shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-green" aria-hidden="true"></span>
+                Connected
+              </span>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between p-2 rounded bg-surface-dim border border-outline-subtle">
+                <div>
+                  <p class="font-mono text-mono-sm text-on-surface">kernel-talk-1080p.mp4</p>
+                  <p class="font-mono text-mono-sm text-on-surface-variant tabular-nums">MP4 • 842 MB</p>
+                </div>
+                <Icon name="download" size={16} class="text-adwaita-blue" />
+              </div>
+              <div class="flex items-center justify-between p-2 rounded bg-surface-dim border border-outline-subtle">
+                <div>
+                  <p class="font-mono text-mono-sm text-on-surface">master.m3u8 (HLS)</p>
+                  <p class="font-mono text-mono-sm text-on-surface-variant tabular-nums">Adaptive Stream</p>
+                </div>
+                <Icon name="download" size={16} class="text-adwaita-blue" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

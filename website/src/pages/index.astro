@@ -1,0 +1,179 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Navbar from '../components/Navbar.astro';
+import Hero from '../components/Hero.astro';
+import MetricsStrip from '../components/MetricsStrip.astro';
+import FeatureBento from '../components/FeatureBento.astro';
+import BrowserIntegration from '../components/BrowserIntegration.astro';
+import QuickInstall from '../components/QuickInstall.astro';
+import ComparisonTable from '../components/ComparisonTable.astro';
+import FinalCta from '../components/FinalCta.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout>
+  <Navbar />
+  <main>
+    <Hero />
+    <MetricsStrip />
+    <FeatureBento />
+    <BrowserIntegration />
+    <QuickInstall />
+    <ComparisonTable />
+    <FinalCta />
+  </main>
+  <Footer />
+
+  <script>
+    // 1. Install Tabs + Dynamic Copy Target Sync
+    const tabs = document.querySelectorAll<HTMLButtonElement>('.install-tab');
+    const panels = document.querySelectorAll<HTMLElement>('.install-panel');
+    const installCopyBtn = document.getElementById('install-copy-btn');
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const targetId = tab.getAttribute('aria-controls');
+        const copyTarget = tab.getAttribute('data-copy-for');
+
+        tabs.forEach((t) => {
+          const active = t === tab;
+          t.setAttribute('aria-selected', String(active));
+          t.setAttribute('tabindex', active ? '0' : '-1');
+          t.classList.toggle('bg-primary', active);
+          t.classList.toggle('text-on-primary', active);
+          t.classList.toggle('text-on-surface-variant', !active);
+        });
+
+        panels.forEach((panel) => {
+          if (panel.id === targetId) {
+            panel.removeAttribute('hidden');
+          } else {
+            panel.setAttribute('hidden', '');
+          }
+        });
+
+        if (installCopyBtn && copyTarget) {
+          installCopyBtn.setAttribute('data-copy-target', copyTarget);
+        }
+      });
+    });
+
+    // 2. Copy-to-Clipboard with Visual Confirmation
+    document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const targetId = btn.getAttribute('data-copy-target');
+        const targetEl = targetId ? document.getElementById(targetId) : null;
+        if (!targetEl) return;
+        const text = (targetEl.textContent || '').trim();
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          // Fallback ignored silently if clipboard blocked
+        }
+        const defIcon = btn.querySelector('.copy-icon-default');
+        const doneIcon = btn.querySelector('.copy-icon-done');
+        const label = btn.querySelector('.copy-label');
+        defIcon?.classList.add('hidden');
+        doneIcon?.classList.remove('hidden');
+        if (label) label.textContent = 'Copied';
+        setTimeout(() => {
+          defIcon?.classList.remove('hidden');
+          doneIcon?.classList.add('hidden');
+          if (label) label.textContent = 'Copy';
+        }, 1600);
+      });
+    });
+
+    // 3. Optional Live GitHub Star Count Hydration (non-blocking)
+    const starEl = document.getElementById('gh-star-count');
+    if (starEl) {
+      fetch('https://api.github.com/repos/TahaHamdy-MernDev/turbodm')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data && typeof data.stargazers_count === 'number') {
+            starEl.textContent = data.stargazers_count > 0 ? String(data.stargazers_count) : 'Star';
+          }
+        })
+        .catch(() => {});
+    }
+
+    // 4. Interactive 16-Segment Dynamic Segmentation Simulator (respects reduced motion)
+    const replayBtn = document.getElementById('sim-replay-btn');
+    const gridEl = document.getElementById('sim-segment-grid');
+    if (replayBtn && gridEl) {
+      let timer: number | undefined;
+      const pctBadge = document.getElementById('sim-pct-badge');
+      const speedEl = document.getElementById('sim-speed');
+      const statusEl = document.getElementById('sim-status-label');
+      const rowBar = document.getElementById('hero-row1-bar');
+      const rowPct = document.getElementById('hero-row1-pct');
+      const rowSize = document.getElementById('hero-row1-size');
+      const rowEta = document.getElementById('hero-row1-eta');
+
+      const startSim = () => {
+        if (timer) window.clearInterval(timer);
+        const segs = Array.from({ length: 16 }, () => Math.random() * 12);
+        const speeds = Array.from({ length: 16 }, (_, i) => (i % 5 === 0 ? 1.8 : 4.2 + Math.random() * 3.5));
+
+        timer = window.setInterval(() => {
+          let doneCount = 0;
+          for (let i = 0; i < 16; i++) {
+            if (segs[i] >= 100) doneCount++;
+          }
+          // Dynamic segmentation boost: finished workers accelerate remaining slow segments
+          const boost = 1 + doneCount * 0.14;
+          let sum = 0;
+          for (let i = 0; i < 16; i++) {
+            if (segs[i] < 100) {
+              segs[i] = Math.min(100, segs[i] + speeds[i] * boost * 0.65);
+            }
+            sum += segs[i];
+            const cell = gridEl.children[i] as HTMLElement | undefined;
+            if (!cell) continue;
+            const fill = cell.querySelector<HTMLElement>('.seg-fill');
+            let tip = cell.querySelector<HTMLElement>('.seg-tip');
+            if (fill) {
+              fill.style.width = `${segs[i].toFixed(1)}%`;
+              if (segs[i] >= 100) {
+                fill.classList.remove('bg-adwaita-blue');
+                fill.classList.add('bg-emerald-green');
+                tip?.remove();
+              } else {
+                fill.classList.add('bg-adwaita-blue');
+                fill.classList.remove('bg-emerald-green');
+                if (!tip) {
+                  tip = document.createElement('div');
+                  tip.className = 'seg-tip w-1 h-full bg-cyan-tip shrink-0';
+                  cell.appendChild(tip);
+                }
+              }
+            }
+          }
+
+          const avg = sum / 16;
+          const gb = ((avg / 100) * 2.41).toFixed(2);
+          const rate = avg >= 100 ? 0 : 44 + Math.random() * 12;
+          const eta = avg >= 100 ? 'Done' : `${Math.max(1, Math.round(((100 - avg) / 100) * 48))}s`;
+
+          if (pctBadge) pctBadge.textContent = `${avg.toFixed(1)}%`;
+          if (speedEl) speedEl.textContent = avg >= 100 ? 'Completed' : `${rate.toFixed(1)} MB/s`;
+          if (statusEl) {
+            statusEl.textContent =
+              avg >= 100 ? 'All 16 Segments Merged (0 MB Copy)' : doneCount > 0 ? `Dynamic Split Active (${doneCount} stolen)` : '16 Parallel Streams';
+          }
+          if (rowBar) rowBar.style.width = `${avg.toFixed(1)}%`;
+          if (rowPct) rowPct.textContent = avg >= 100 ? '100% • Done' : `${avg.toFixed(1)}% • 16x`;
+          if (rowSize) rowSize.textContent = `${gb} / 2.41 GB`;
+          if (rowEta) rowEta.textContent = eta;
+
+          if (avg >= 100 && timer) {
+            window.clearInterval(timer);
+            timer = undefined;
+          }
+        }, 160);
+      };
+
+      replayBtn.addEventListener('click', startSim);
+    }
+  </script>
+</Layout>

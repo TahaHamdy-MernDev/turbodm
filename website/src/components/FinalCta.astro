@@ -1,0 +1,39 @@
+---
+const RELEASES_URL = 'https://github.com/TahaHamdy-MernDev/turbodm/releases';
+const README_URL = 'https://github.com/TahaHamdy-MernDev/turbodm#readme';
+---
+
+<section class="py-section">
+  <div class="max-w-[1160px] mx-auto px-4 sm:px-8">
+    <div class="p-1 rounded-lg bg-gradient-to-r from-adwaita-blue/50 via-outline to-emerald-green/50">
+      <div class="bg-surface-container rounded-md p-8 sm:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+        <div class="flex flex-col gap-2 max-w-xl">
+          <h2 class="font-headline text-headline-lg-mobile md:text-headline-lg text-on-surface text-balance">
+            Ready to max out your connection on Fedora?
+          </h2>
+          <p class="font-body text-body-md text-on-surface-variant">
+            MIT-licensed, native GTK4 &amp; Libadwaita, and ready in one command.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-4 shrink-0">
+          <a
+            href={RELEASES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-on-primary border border-transparent hover:bg-adwaita-blue transition-colors duration-state-change whitespace-nowrap font-label text-label-lg"
+          >
+            Download v1.0.0 on GitHub
+          </a>
+          <a
+            href={README_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-surface-container text-on-surface border border-outline hover:bg-surface-container-high hover:border-on-surface-variant transition-colors duration-state-change whitespace-nowrap font-label text-label-lg"
+          >
+            Read Documentation
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -17,6 +17,11 @@ build/
 *.turbodm.part
 ipc_token
 
+# Website (Astro / Netlify)
+website/node_modules/
+website/dist/
+website/.astro/
+
 # IDE / OS
 .vscode/
 .idea/

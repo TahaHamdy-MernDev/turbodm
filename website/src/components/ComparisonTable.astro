@@ -1,0 +1,87 @@
+---
+const rows = [
+  {
+    capability: 'Dynamic Segmentation',
+    turbodm: 'Up to 32x + Auto-Split',
+    turbodmMono: true,
+    browser: 'Single stream (1x)',
+    electron: 'Static chunks only',
+  },
+  {
+    capability: 'RAM Usage',
+    turbodm: '~40 MB',
+    turbodmMono: true,
+    browser: 'Tab-bound',
+    electron: '350–600 MB',
+    electronWarn: true,
+  },
+  {
+    capability: 'Native Wayland Look',
+    turbodm: 'GTK4 + Libadwaita',
+    browser: 'Browser toolbar',
+    electron: 'XWayland / Chromium',
+  },
+  {
+    capability: 'YouTube / HLS Quality Picker',
+    turbodm: 'Built-in (yt-dlp + ffmpeg)',
+    browser: 'None',
+    electron: 'Plugin required',
+  },
+  {
+    capability: 'Crash-Safe Resume',
+    turbodm: 'SQLite WAL + ETag Verified',
+    browser: 'Fails on restart',
+    electron: 'Partial',
+  },
+  {
+    capability: 'Auto-Category Folders',
+    turbodm: '5 IDM XDG Categories',
+    browser: 'Single flat folder',
+    electron: 'Manual rules',
+  },
+];
+---
+
+<section class="py-section border-b border-outline">
+  <div class="max-w-[1160px] mx-auto px-4 sm:px-8 flex flex-col gap-8">
+    <div class="text-center flex flex-col gap-2">
+      <h2 class="font-headline text-headline-lg-mobile md:text-headline-lg text-on-surface">
+        How TurboDM Compares
+      </h2>
+      <p class="font-body text-body-md text-on-surface-variant">
+        Built for Linux users who want full line-rate saturation without Electron memory tax.
+      </p>
+    </div>
+
+    <div class="bg-surface-container border border-outline rounded-md overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-outline bg-surface-container-high">
+              <th scope="col" class="px-6 py-4 font-label text-label-lg text-on-surface-variant whitespace-nowrap">Capability</th>
+              <th scope="col" class="px-6 py-4 bg-primary-container border-x border-adwaita-blue font-label text-label-lg text-on-primary-container whitespace-nowrap">
+                TurboDM (Native GTK4)
+              </th>
+              <th scope="col" class="px-6 py-4 font-label text-label-lg text-on-surface-variant whitespace-nowrap">Default Browser Download</th>
+              <th scope="col" class="px-6 py-4 font-label text-label-lg text-on-surface-variant whitespace-nowrap">Heavy Electron Managers</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline">
+            {rows.map((r) => (
+              <tr>
+                <td class="px-6 py-4 font-body text-body-md text-on-surface">{r.capability}</td>
+                <td class={`px-6 py-4 bg-primary-container/25 border-x border-adwaita-blue text-emerald-green ${r.turbodmMono ? 'font-mono text-mono-md tabular-nums' : 'font-body text-body-md'}`}>
+                  {r.turbodm}
+                </td>
+                <td class="px-6 py-4 font-body text-body-md text-on-surface-variant">{r.browser}</td>
+                <td class={`px-6 py-4 ${r.electronWarn ? 'font-mono text-mono-md text-amber-warning tabular-nums' : 'font-body text-body-md text-on-surface-variant'}`}>
+                  {r.electron}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

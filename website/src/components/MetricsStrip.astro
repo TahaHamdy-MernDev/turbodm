@@ -1,0 +1,23 @@
+---
+const metrics = [
+  { value: 'Up to 32x', label: 'Parallel Connections', color: 'text-on-surface' },
+  { value: '0 MB Overhead', label: 'Atomic os.pwrite Disk I/O', color: 'text-emerald-green' },
+  { value: '~40 MB RAM', label: 'Native GTK4 Footprint (No Electron)', color: 'text-adwaita-blue' },
+  { value: '100% Free', label: 'Open Source MIT License', color: 'text-on-surface' },
+];
+---
+
+<section class="border-b border-outline bg-surface-container">
+  <div class="max-w-[1280px] mx-auto px-4 sm:px-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-outline">
+      {metrics.map((m) => (
+        <div class="py-8 px-4 flex flex-col gap-1">
+          <span class={`font-mono text-headline-lg-mobile md:text-headline-lg tabular-nums ${m.color}`}>
+            {m.value}
+          </span>
+          <span class="font-body text-body-sm text-on-surface-variant">{m.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
