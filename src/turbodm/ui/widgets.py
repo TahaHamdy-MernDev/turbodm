@@ -41,6 +41,7 @@ class CompactStepper(Gtk.Box):
         self.btn_dec.add_css_class("stepper-btn")
         self.btn_dec.add_css_class("stepper-btn-left")
         self.btn_dec.set_can_focus(False)
+        self.btn_dec.set_cursor_from_name("pointer")
         self.btn_dec.connect("clicked", lambda *_: self.set_value(self._value - self._step, notify=True))
 
         self.entry = Gtk.Entry(
@@ -61,6 +62,7 @@ class CompactStepper(Gtk.Box):
         self.btn_inc.add_css_class("stepper-btn")
         self.btn_inc.add_css_class("stepper-btn-right")
         self.btn_inc.set_can_focus(False)
+        self.btn_inc.set_cursor_from_name("pointer")
         self.btn_inc.connect("clicked", lambda *_: self.set_value(self._value + self._step, notify=True))
 
         self.append(self.btn_dec)

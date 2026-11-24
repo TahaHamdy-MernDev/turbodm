@@ -485,9 +485,14 @@ entry:focus-within {
     background-color: #0E1117;
 }
 
-.compact-stepper .stepper-entry {
+.compact-stepper .stepper-entry,
+.compact-stepper .stepper-entry:focus,
+.compact-stepper .stepper-entry:focus-within {
     background-color: transparent;
     border: none;
+    outline: none;
+    outline-width: 0;
+    outline-color: transparent;
     box-shadow: none;
     min-height: 26px;
     padding: 0 4px;
