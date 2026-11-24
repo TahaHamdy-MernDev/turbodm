@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "TurboDM Integration",
+  "version": "1.0.0",
+  "description": "Send downloads and videos from Google Chrome directly to TurboDM on Linux.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApBkc8jNyG6+MS5NtFrAvyOA0bg6LVjL7s2eT/HaYernxhwbZmaog12Uhqrpo3/J1Qq+TpyyXUtdwUSEUlhSaX+DRIuCoZwQCGjxVAGKASpesJPQvANzR87mp6a4C/iMl1Gu4BhMeE0kVZReQspgzD8Weq5gpue8DjKLPq/6N1Fmpf07NULnTp1N1ZxAKZKVizmxBFuEKtiuIEVR31c7/vlAlUroSGLDWcn1jDG225C7NX7jEVTKpHMkbP6kP2FaM8XEoi61lkv+BuP0dKyT7D3tYD38OuSWHSIrauiudOCQPtEcdwtX4x/5t71zYq2+60cVRW9RA/GBCBL6oBSmGcQIDAQAB",
+  "permissions": [
+    "contextMenus",
+    "cookies",
+    "downloads",
+    "nativeMessaging",
+    "storage",
+    "tabs",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TurboDM",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

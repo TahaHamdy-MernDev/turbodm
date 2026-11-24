@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=TurboDM
+GenericName=Download Manager
+Comment=High-speed native Linux download manager inspired by IDM
+Exec=@BIN_PATH@ %U
+Icon=com.turbodm.app
+Terminal=false
+Categories=Network;FileTransfer;GTK;
+Keywords=download;idm;manager;video;youtube;accelerator;
+StartupNotify=true
+StartupWMClass=com.turbodm.app
+MimeType=x-scheme-handler/turbodm;

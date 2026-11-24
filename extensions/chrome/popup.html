@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TurboDM</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --card: #f4f6f9;
+      --text: #1f2328;
+      --muted: #59636e;
+      --accent: #1c71d8;
+      --border: #d0d7de;
+      --ok: #26a269;
+      --err: #e01b24;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e22;
+        --card: #28282e;
+        --text: #f0f2f5;
+        --muted: #9da5b4;
+        --accent: #3584e4;
+        --border: #3c3c46;
+      }
+    }
+    body {
+      margin: 0;
+      padding: 12px;
+      width: 340px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge.online { background: rgba(38, 162, 105, 0.18); color: var(--ok); }
+    .badge.offline { background: rgba(224, 27, 36, 0.16); color: var(--err); }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin: 10px 0 6px 0;
+    }
+    .media-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .media-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .media-info {
+      min-width: 0;
+      flex: 1;
+    }
+    .media-title {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .media-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button.secondary {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button:hover { opacity: 0.9; }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 12.5px; }
+    .toggle-sub { font-size: 11px; color: var(--muted); }
+    .footer {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .footer button { flex: 1; }
+    .empty {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 10px;
+      text-align: center;
+      background: var(--card);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">⚡ TurboDM</div>
+    <span id="statusBadge" class="badge offline">Checking...</span>
+  </div>
+
+  <div class="section-title">Detected Media on This Tab</div>
+  <div id="mediaList" class="media-list">
+    <div class="empty">Scanning active tab...</div>
+  </div>
+
+  <div class="section-title">Preferences</div>
+  <div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Floating video button</div>
+        <div class="toggle-sub">Show "Download this video" pill over players</div>
+      </div>
+      <input type="checkbox" id="chkFloating" checked />
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Auto-intercept downloads</div>
+        <div class="toggle-sub">Off by default — use right-click menu</div>
+      </div>
+      <input type="checkbox" id="chkAutoIntercept" />
+    </div>
+  </div>
+
+  <div class="footer">
+    <button id="btnOpenApp" class="secondary">Open TurboDM</button>
+    <button id="btnGrabPage">Grab Page Video</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
