@@ -18,6 +18,8 @@ build/
 ipc_token
 
 # Website (Astro / Netlify)
+.netlify/
+website/.netlify/
 website/node_modules/
 website/dist/
 website/.astro/
