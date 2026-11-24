@@ -14,6 +14,7 @@ from gi.repository import Adw, Gtk, Pango  # noqa: E402
 from turbodm.core.manager import DownloadManager  # noqa: E402
 from turbodm.core.models import DownloadItem, DownloadStatus, SegmentStatus  # noqa: E402
 from turbodm.ui.segment_bar import SegmentProgressBar  # noqa: E402
+from turbodm.ui.widgets import CompactStepper  # noqa: E402
 from turbodm.utils.formatting import format_bytes, format_eta, format_speed  # noqa: E402
 
 
@@ -185,18 +186,17 @@ class DownloadProgressWindow(Adw.Window):
         self.limit_check.connect("toggled", self._on_speed_limit_changed)
         limiter_tab.append(self.limit_check)
 
-        limit_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        limit_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10, valign=Gtk.Align.CENTER)
         limit_row.append(Gtk.Label(label="Maximum download speed (KB/s):"))
-        adj = Gtk.Adjustment(
+        self.limit_spin = CompactStepper(
             value=self._item.speed_limit_kbps or 512,
             lower=10,
             upper=500000,
-            step_increment=64,
-            page_increment=512,
+            step=64,
+            width_chars=6,
+            on_changed=lambda _v: self._on_speed_limit_changed(),
         )
-        self.limit_spin = Gtk.SpinButton(adjustment=adj, numeric=True)
         self.limit_spin.set_sensitive(self._item.speed_limit_kbps > 0)
-        self.limit_spin.connect("value-changed", self._on_speed_limit_changed)
         limit_row.append(self.limit_spin)
         limiter_tab.append(limit_row)
 

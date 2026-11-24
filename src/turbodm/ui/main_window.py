@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 from pathlib import Path
@@ -251,26 +250,24 @@ class MainWindow(Adw.ApplicationWindow):
         outer = Adw.ToolbarView()
         self.toast_overlay.set_child(outer)
 
-        # --- Top HeaderBar (Logo + Wordmark + Wayland/GTK Badge + Inline Filter + Controls) ---
+        # --- Top HeaderBar (Clean Logo + TurboDM Title + Compact Filter + Controls) ---
         header = Adw.HeaderBar()
         header.set_show_title(False)
 
-        brand_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10, valign=Gtk.Align.CENTER)
+        brand_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9, valign=Gtk.Align.CENTER)
         brand_box.append(_create_brand_logo(24))
         brand_lbl = Gtk.Label(label=APP_NAME)
         brand_lbl.add_css_class("brand-title")
         brand_box.append(brand_lbl)
-
-        session = os.environ.get("XDG_SESSION_TYPE", "wayland").capitalize()
-        gtk_ver = f"GTK {Gtk.get_major_version()}.{Gtk.get_minor_version()}"
-        env_badge = Gtk.Label(label=f"{session} • {gtk_ver}")
-        env_badge.add_css_class("wayland-badge")
-        brand_box.append(env_badge)
         header.pack_start(brand_box)
 
-        # Right side of HeaderBar: Inline Filter Search + Speed Limiter + App Menu
-        self.search_entry = Gtk.SearchEntry(placeholder_text="Filter downloads...")
-        self.search_entry.set_size_request(210, -1)
+        # Right side of HeaderBar: Slim Filter Search + Speed Limiter + App Menu
+        self.search_entry = Gtk.SearchEntry(
+            placeholder_text="Filter downloads...",
+            valign=Gtk.Align.CENTER,
+        )
+        self.search_entry.set_size_request(195, 28)
+        self.search_entry.add_css_class("header-search")
         self.search_entry.connect("search-changed", self._on_search_changed)
 
         # Keep compatibility toggle attribute for Ctrl+F action

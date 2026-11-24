@@ -16,6 +16,7 @@ from turbodm.constants import DEFAULT_CATEGORIES  # noqa: E402
 from turbodm.core.manager import DownloadManager  # noqa: E402
 from turbodm.core.models import DownloadItem, ProbeResult  # noqa: E402
 from turbodm.media.ytdlp_engine import is_streaming_url  # noqa: E402
+from turbodm.ui.widgets import CompactStepper  # noqa: E402
 from turbodm.utils.formatting import (  # noqa: E402
     detect_category,
     filename_from_url,
@@ -176,16 +177,15 @@ class AddDownloadDialog(Adw.Window):
         self.queue_dropdown.set_hexpand(True)
         grid.attach(self.queue_dropdown, 1, 3, 1, 1)
 
-        conn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        conn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6, valign=Gtk.Align.CENTER)
         conn_box.append(Gtk.Label(label="Parts:"))
-        adj = Gtk.Adjustment(
+        self.conn_spin = CompactStepper(
             value=self.manager.settings.default_connections,
             lower=1,
             upper=32,
-            step_increment=1,
-            page_increment=4,
+            step=1,
+            width_chars=4,
         )
-        self.conn_spin = Gtk.SpinButton(adjustment=adj, numeric=True)
         conn_box.append(self.conn_spin)
         grid.attach(conn_box, 2, 3, 1, 1)
 

@@ -1,20 +1,20 @@
-"""IDM-style Options / Preferences dialog built with Libadwaita Adw.PreferencesDialog."""
+"""IDM-style Options / Preferences dialog with compact inputs and [- | N | +] steppers."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, Gtk  # noqa: E402
 
 from turbodm.constants import APP_ID, DEFAULT_CATEGORIES, IPC_HOST  # noqa: E402
 from turbodm.core.manager import DownloadManager  # noqa: E402
 from turbodm.ipc.server import get_or_create_ipc_token  # noqa: E402
+from turbodm.ui.widgets import CompactStepper  # noqa: E402
 from turbodm.utils.formatting import get_category_folder  # noqa: E402
 
 
@@ -46,8 +46,21 @@ def sync_gnome_autostart(enabled: bool) -> None:
                 pass
 
 
+def _make_compact_entry(text: str, width_chars: int = 24, placeholder: str = "") -> Gtk.Entry:
+    entry = Gtk.Entry(
+        text=text,
+        placeholder_text=placeholder,
+        width_chars=width_chars,
+        max_width_chars=width_chars + 4,
+        valign=Gtk.Align.CENTER,
+        halign=Gtk.Align.END,
+    )
+    entry.add_css_class("compact-input")
+    return entry
+
+
 class SettingsDialog(Adw.PreferencesDialog):
-    """Multi-page Preferences dialog mirroring IDM Options."""
+    """Multi-page Preferences dialog with refined compact inputs and steppers."""
 
     def __init__(
         self,
@@ -57,7 +70,7 @@ class SettingsDialog(Adw.PreferencesDialog):
         super().__init__(title="TurboDM Options")
         self.manager = manager
         self._on_saved = on_saved
-        self._cat_entries: dict[str, Adw.EntryRow] = {}
+        self._cat_entries: dict[str, Gtk.Entry] = {}
 
         self._build_general_page()
         self._build_connections_page()
@@ -74,14 +87,14 @@ class SettingsDialog(Adw.PreferencesDialog):
         grp_ui = Adw.PreferencesGroup(title="Window &amp; Background Behavior")
         self.sw_progress = Adw.SwitchRow(
             title="Show Download Progress Dialog",
-            subtitle="Open a dedicated IDM-style progress window with segment bars when a download starts",
+            subtitle="Open a dedicated progress window with segment byte map on start",
             active=s.show_progress_dialog,
         )
         grp_ui.add(self.sw_progress)
 
         self.sw_background = Adw.SwitchRow(
             title="Keep Running in Background on Close",
-            subtitle="Closing the main window hides it so active downloads and browser integration continue",
+            subtitle="Closing the main window hides it so downloads and browser bridge stay active",
             active=s.keep_running_in_background,
         )
         grp_ui.add(self.sw_background)
@@ -120,24 +133,35 @@ class SettingsDialog(Adw.PreferencesDialog):
             title="Segmented Download Engine",
             description="Controls parallel byte-range connections and dynamic segmentation.",
         )
-        self.spin_conns = Adw.SpinRow.new_with_range(1, 32, 1)
-        self.spin_conns.set_title("Default Max Connections")
-        self.spin_conns.set_subtitle("Number of parallel parts per file (recommended: 8–16)")
-        self.spin_conns.set_value(s.default_connections)
-        grp_eng.add(self.spin_conns)
 
-        self.spin_retries = Adw.SpinRow.new_with_range(0, 20, 1)
-        self.spin_retries.set_title("Retry Attempts per Segment")
-        self.spin_retries.set_value(s.max_retries)
-        grp_eng.add(self.spin_retries)
+        row_conns = Adw.ActionRow(
+            title="Default Max Connections",
+            subtitle="Parallel parts per file (recommended: 8–16)",
+        )
+        self.step_conns = CompactStepper(value=s.default_connections, lower=1, upper=32, step=1, width_chars=4)
+        row_conns.add_suffix(self.step_conns)
+        grp_eng.add(row_conns)
 
-        self.spin_timeout = Adw.SpinRow.new_with_range(5, 120, 5)
-        self.spin_timeout.set_title("Connection Timeout (seconds)")
-        self.spin_timeout.set_value(s.connect_timeout)
-        grp_eng.add(self.spin_timeout)
+        row_retries = Adw.ActionRow(
+            title="Retry Attempts per Segment",
+            subtitle="Automatic retries on transient errors",
+        )
+        self.step_retries = CompactStepper(value=s.max_retries, lower=0, upper=20, step=1, width_chars=4)
+        row_retries.add_suffix(self.step_retries)
+        grp_eng.add(row_retries)
 
-        self.entry_ua = Adw.EntryRow(title="Default User-Agent", text=s.user_agent)
-        grp_eng.add(self.entry_ua)
+        row_timeout = Adw.ActionRow(
+            title="Connection Timeout (sec)",
+            subtitle="Socket connect timeout before retry",
+        )
+        self.step_timeout = CompactStepper(value=int(s.connect_timeout), lower=5, upper=120, step=5, width_chars=4)
+        row_timeout.add_suffix(self.step_timeout)
+        grp_eng.add(row_timeout)
+
+        row_ua = Adw.ActionRow(title="Default User-Agent")
+        self.entry_ua = _make_compact_entry(s.user_agent, width_chars=24)
+        row_ua.add_suffix(self.entry_ua)
+        grp_eng.add(row_ua)
 
         self.sw_ssl = Adw.SwitchRow(
             title="Verify HTTPS SSL Certificates",
@@ -154,11 +178,19 @@ class SettingsDialog(Adw.PreferencesDialog):
         )
         grp_lim.add(self.sw_global_limit)
 
-        self.spin_global_kbps = Adw.SpinRow.new_with_range(0, 500000, 64)
-        self.spin_global_kbps.set_title("Maximum Speed (KB/s)")
-        self.spin_global_kbps.set_subtitle("0 = Unlimited")
-        self.spin_global_kbps.set_value(s.global_speed_limit_kbps)
-        grp_lim.add(self.spin_global_kbps)
+        row_kbps = Adw.ActionRow(
+            title="Maximum Speed (KB/s)",
+            subtitle="0 = Unlimited",
+        )
+        self.step_global_kbps = CompactStepper(
+            value=s.global_speed_limit_kbps,
+            lower=0,
+            upper=500000,
+            step=128,
+            width_chars=6,
+        )
+        row_kbps.add_suffix(self.step_global_kbps)
+        grp_lim.add(row_kbps)
         page.add(grp_lim)
 
         self.add(page)
@@ -171,8 +203,10 @@ class SettingsDialog(Adw.PreferencesDialog):
             title="Default Downloads Root",
             description="IDM-style automatic category subfolders live inside this directory.",
         )
-        self.entry_root = Adw.EntryRow(title="Root Folder", text=s.downloads_root)
-        grp_root.add(self.entry_root)
+        row_root = Adw.ActionRow(title="Root Folder")
+        self.entry_root = _make_compact_entry(s.downloads_root, width_chars=26)
+        row_root.add_suffix(self.entry_root)
+        grp_root.add(row_root)
         page.add(grp_root)
 
         grp_cats = Adw.PreferencesGroup(title="Category Folders")
@@ -184,8 +218,10 @@ class SettingsDialog(Adw.PreferencesDialog):
                     downloads_root=Path(s.downloads_root),
                 )
             )
-            row = Adw.EntryRow(title=cat, text=current)
-            self._cat_entries[cat] = row
+            row = Adw.ActionRow(title=cat)
+            entry = _make_compact_entry(current, width_chars=26)
+            self._cat_entries[cat] = entry
+            row.add_suffix(entry)
             grp_cats.add(row)
         page.add(grp_cats)
 
@@ -202,8 +238,14 @@ class SettingsDialog(Adw.PreferencesDialog):
         self.sw_proxy = Adw.SwitchRow(title="Use Proxy Server", active=s.proxy_enabled)
         grp.add(self.sw_proxy)
 
-        self.entry_proxy = Adw.EntryRow(title="Proxy URL", text=s.proxy_url)
-        grp.add(self.entry_proxy)
+        row_proxy = Adw.ActionRow(title="Proxy URL")
+        self.entry_proxy = _make_compact_entry(
+            s.proxy_url,
+            width_chars=26,
+            placeholder="socks5://127.0.0.1:1080",
+        )
+        row_proxy.add_suffix(self.entry_proxy)
+        grp.add(row_proxy)
         page.add(grp)
 
         self.add(page)
@@ -217,13 +259,12 @@ class SettingsDialog(Adw.PreferencesDialog):
             title="Browser Extension Bridge (Chrome &amp; Firefox)",
             description=(
                 "Native Messaging connects Chrome and Firefox directly to TurboDM "
-                "and automatically launches TurboDM when closed. Auto-interception is OFF by default "
-                "— use Right-Click 'Download with TurboDM' or the floating 'Download this video' button."
+                "and auto-launches TurboDM when closed. Auto-interception is OFF by default."
             ),
         )
         port_row = Adw.ActionRow(
             title="Local IPC Endpoint",
-            subtitle=f"http://{IPC_HOST}:{s.ipc_port} (bound to localhost only)",
+            subtitle=f"http://{IPC_HOST}:{s.ipc_port} (localhost only)",
         )
         grp_ipc.add(port_row)
 
@@ -232,22 +273,25 @@ class SettingsDialog(Adw.PreferencesDialog):
             subtitle=f"{token[:10]}...{token[-6:]} (auto-read by Native Messaging host)",
         )
         copy_btn = Gtk.Button(label="Copy Token", valign=Gtk.Align.CENTER)
+        copy_btn.add_css_class("idm-btn-chip")
         copy_btn.connect("clicked", lambda *_: self._copy_text(token))
         token_row.add_suffix(copy_btn)
         grp_ipc.add(token_row)
         page.add(grp_ipc)
 
         grp_ext = Adw.PreferencesGroup(title="Loading Extensions")
-        chrome_row = Adw.ActionRow(
-            title="Google Chrome",
-            subtitle="Open chrome://extensions → Enable Developer Mode → Load unpacked → select extensions/chrome",
+        grp_ext.add(
+            Adw.ActionRow(
+                title="Google Chrome",
+                subtitle="chrome://extensions → Developer Mode → Load unpacked → extensions/chrome",
+            )
         )
-        grp_ext.add(chrome_row)
-        ff_row = Adw.ActionRow(
-            title="Mozilla Firefox",
-            subtitle="Open about:debugging#/runtime/this-firefox → Load Temporary Add-on → select extensions/firefox/manifest.json",
+        grp_ext.add(
+            Adw.ActionRow(
+                title="Mozilla Firefox",
+                subtitle="about:debugging#/runtime/this-firefox → Load Temporary Add-on → extensions/firefox/manifest.json",
+            )
         )
-        grp_ext.add(ff_row)
         page.add(grp_ext)
 
         self.add(page)
@@ -265,18 +309,18 @@ class SettingsDialog(Adw.PreferencesDialog):
         s.clipboard_monitor_enabled = self.sw_clipboard.get_active()
         s.autostart_enabled = self.sw_autostart.get_active()
 
-        s.default_connections = int(self.spin_conns.get_value())
-        s.max_retries = int(self.spin_retries.get_value())
-        s.connect_timeout = float(self.spin_timeout.get_value())
+        s.default_connections = self.step_conns.get_value()
+        s.max_retries = self.step_retries.get_value()
+        s.connect_timeout = float(self.step_timeout.get_value())
         s.user_agent = self.entry_ua.get_text().strip() or s.user_agent
         s.verify_ssl = self.sw_ssl.get_active()
 
         s.global_speed_limit_enabled = self.sw_global_limit.get_active()
-        s.global_speed_limit_kbps = int(self.spin_global_kbps.get_value())
+        s.global_speed_limit_kbps = self.step_global_kbps.get_value()
 
         s.downloads_root = self.entry_root.get_text().strip() or s.downloads_root
-        for cat, row in self._cat_entries.items():
-            val = row.get_text().strip()
+        for cat, entry in self._cat_entries.items():
+            val = entry.get_text().strip()
             if val:
                 s.category_folders[cat] = val
 

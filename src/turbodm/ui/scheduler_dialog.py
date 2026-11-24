@@ -13,6 +13,7 @@ from gi.repository import Adw, Gtk  # noqa: E402
 
 from turbodm.core.manager import DownloadManager  # noqa: E402
 from turbodm.core.models import QueueConfig  # noqa: E402
+from turbodm.ui.widgets import CompactStepper  # noqa: E402
 
 
 class SchedulerDialog(Adw.Window):
@@ -85,11 +86,9 @@ class SchedulerDialog(Adw.Window):
         name_row.append(self.q_name_entry)
         right.append(name_row)
 
-        conc_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        conc_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10, valign=Gtk.Align.CENTER)
         conc_row.append(Gtk.Label(label="Simultaneous:", width_chars=14, xalign=0))
-        self.max_conc_spin = Gtk.SpinButton(
-            adjustment=Gtk.Adjustment(value=3, lower=1, upper=20, step_increment=1)
-        )
+        self.max_conc_spin = CompactStepper(value=3, lower=1, upper=20, step=1, width_chars=4)
         conc_row.append(self.max_conc_spin)
         conc_row.append(Gtk.Label(label="files at the same time"))
         right.append(conc_row)
