@@ -17,9 +17,7 @@ build/
 *.turbodm.part
 ipc_token
 
-# Website (Astro / Netlify)
-.netlify/
-website/.netlify/
+# Website (Astro / Cloudflare Pages)
 website/node_modules/
 website/dist/
 website/.astro/
