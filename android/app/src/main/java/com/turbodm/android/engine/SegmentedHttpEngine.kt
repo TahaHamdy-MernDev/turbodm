@@ -126,6 +126,7 @@ class SegmentedHttpEngine(
         entity: DownloadEntity,
         pauseRequested: AtomicBoolean,
         cancelRequested: AtomicBoolean,
+        dynamicSplitEnabled: Boolean = true,
         onProgress: suspend (DownloadEntity) -> Unit,
     ): DownloadEntity = withContext(Dispatchers.IO) {
         var current = entity.copy(
@@ -221,6 +222,7 @@ class SegmentedHttpEngine(
                     resumable = current.resumable,
                     totalSize = current.totalSize,
                     maxConns = current.maxConnections.coerceIn(1, 32),
+                    dynamicSplitEnabled = dynamicSplitEnabled,
                     segments = segments,
                     nextSegIndex = nextSegIndex,
                     channel = channel,
@@ -330,6 +332,7 @@ class SegmentedHttpEngine(
         resumable: Boolean,
         totalSize: Long?,
         maxConns: Int,
+        dynamicSplitEnabled: Boolean,
         segments: CopyOnWriteArrayList<SegmentState>,
         nextSegIndex: AtomicInteger,
         channel: FileChannel,
@@ -382,9 +385,11 @@ class SegmentedHttpEngine(
             }
 
             // Dynamic Segmentation (IDM work-stealing): split largest active segment in half!
-            while (resumable && (totalSize ?: 0L) > 0L && activeJobs.size < maxConns) {
-                val newSeg = tryDynamicSplit(segments, nextSegIndex, splitLock) ?: break
-                spawnWorker(newSeg)
+            if (dynamicSplitEnabled) {
+                while (resumable && (totalSize ?: 0L) > 0L && activeJobs.size < maxConns) {
+                    val newSeg = tryDynamicSplit(segments, nextSegIndex, splitLock) ?: break
+                    spawnWorker(newSeg)
+                }
             }
         }
     }

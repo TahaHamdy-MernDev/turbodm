@@ -13,16 +13,21 @@ import com.turbodm.android.data.ProbeResult
 import com.turbodm.android.service.DownloadForegroundService
 import com.turbodm.android.util.Formatters
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -40,19 +45,25 @@ class DownloadCoordinator(private val appContext: Context) {
     val mediaEngine = YtDlpMediaEngine()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val concurrencySemaphore = Semaphore(3)
+    private val slotMutex = Mutex()
+    private val activeSlotCount = MutableStateFlow(0)
 
-    private data class ActiveControl(
-        val job: Job,
+    private class ActiveControl(
         val pauseFlag: AtomicBoolean,
         val cancelFlag: AtomicBoolean,
-        val isMedia: Boolean,
-    )
+        @Volatile var isMedia: Boolean = false,
+    ) {
+        lateinit var job: Job
+    }
 
     private val activeTasks = ConcurrentHashMap<String, ActiveControl>()
 
     private val _activeSummary = MutableStateFlow<List<DownloadEntity>>(emptyList())
     val activeSummary: StateFlow<List<DownloadEntity>> = _activeSummary.asStateFlow()
+
+    private val speedBuffers = ConcurrentHashMap<String, ArrayDeque<Double>>()
+    private val _speedHistory = MutableStateFlow<Map<String, List<Double>>>(emptyMap())
+    val speedHistory: StateFlow<Map<String, List<Double>>> = _speedHistory.asStateFlow()
 
     val downloadsFlow: Flow<List<DownloadEntity>> = dao.observeAll()
 
@@ -66,14 +77,43 @@ class DownloadCoordinator(private val appContext: Context) {
     }
 
     fun getCategoryDir(category: String): File {
+        val autoSort = prefs.state.value.autoSortByCategory
+        val sub = if (!autoSort || category == "General" || category.isBlank()) "" else category
         val publicDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val base = File(publicDownloads, "TurboDM")
-        val target = if (category == "General" || category.isBlank()) base else File(base, category)
+        val target = if (sub.isEmpty()) base else File(base, sub)
         return if (target.mkdirs() || target.exists()) {
             target
         } else {
-            // Fallback to app-specific external Downloads if public dir unavailable
-            File(appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), category).apply { mkdirs() }
+            val appBase = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            val fallback = if (sub.isEmpty()) File(appBase, "TurboDM") else File(appBase, sub)
+            fallback.apply { mkdirs() }
+        }
+    }
+
+    private suspend fun <T> withConcurrencySlot(block: suspend () -> T): T {
+        while (true) {
+            var acquired = false
+            slotMutex.withLock {
+                val limit = prefs.state.value.maxConcurrent.coerceIn(1, 8)
+                if (activeSlotCount.value < limit) {
+                    activeSlotCount.value = activeSlotCount.value + 1
+                    acquired = true
+                }
+            }
+            if (acquired) break
+            combine(activeSlotCount, prefs.state) { count, p ->
+                count < p.maxConcurrent.coerceIn(1, 8)
+            }.first { it }
+        }
+        return try {
+            block()
+        } finally {
+            withContext(NonCancellable) {
+                slotMutex.withLock {
+                    activeSlotCount.value = (activeSlotCount.value - 1).coerceAtLeast(0)
+                }
+            }
         }
     }
 
@@ -184,14 +224,21 @@ class DownloadCoordinator(private val appContext: Context) {
 
         val pauseFlag = AtomicBoolean(false)
         val cancelFlag = AtomicBoolean(false)
+        val ctrl = ActiveControl(pauseFlag, cancelFlag)
 
-        val job = scope.launch {
-            val entity = dao.getById(downloadId) ?: return@launch
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            val entity = dao.getById(downloadId)
+            if (entity == null) {
+                activeTasks.remove(downloadId)
+                return@launch
+            }
+            ctrl.isMedia = entity.isMedia
             DownloadForegroundService.start(appContext)
             try {
-                concurrencySemaphore.withPermit {
-                    val fresh = dao.getById(downloadId) ?: return@withPermit
-                    if (pauseFlag.get() || cancelFlag.get()) return@withPermit
+                withConcurrencySlot {
+                    val fresh = dao.getById(downloadId) ?: return@withConcurrencySlot
+                    ctrl.isMedia = fresh.isMedia
+                    if (pauseFlag.get() || cancelFlag.get()) return@withConcurrencySlot
 
                     var lastDbWrite = 0L
                     val onProgress: suspend (DownloadEntity) -> Unit = { updated ->
@@ -211,7 +258,13 @@ class DownloadCoordinator(private val appContext: Context) {
                     val result = if (fresh.isMedia) {
                         mediaEngine.downloadMedia(appContext, fresh, pauseFlag, cancelFlag, onProgress)
                     } else {
-                        httpEngine.download(fresh, pauseFlag, cancelFlag, onProgress)
+                        httpEngine.download(
+                            entity = fresh,
+                            pauseRequested = pauseFlag,
+                            cancelRequested = cancelFlag,
+                            dynamicSplitEnabled = prefs.state.value.dynamicSegmentation,
+                            onProgress = onProgress,
+                        )
                     }
                     dao.upsert(result)
 
@@ -229,9 +282,19 @@ class DownloadCoordinator(private val appContext: Context) {
             }
         }
 
+        ctrl.job = job
+        if (activeTasks.putIfAbsent(downloadId, ctrl) != null) {
+            job.cancel()
+            return
+        }
+        job.start()
+    }
+
+    fun resumeAll() {
         scope.launch {
-            val isMedia = dao.getById(downloadId)?.isMedia ?: false
-            activeTasks[downloadId] = ActiveControl(job, pauseFlag, cancelFlag, isMedia)
+            dao.getAll()
+                .filter { it.statusEnum() in setOf(DownloadStatus.PAUSED, DownloadStatus.QUEUED) }
+                .forEach { startDownload(it.id) }
         }
     }
 
@@ -261,6 +324,8 @@ class DownloadCoordinator(private val appContext: Context) {
             if (ctrl.isMedia) mediaEngine.destroyProcess(downloadId)
             ctrl.job.cancel()
         }
+        speedBuffers.remove(downloadId)
+        _speedHistory.value = _speedHistory.value - downloadId
         scope.launch {
             val item = dao.getById(downloadId)
             if (item != null) {
@@ -274,7 +339,16 @@ class DownloadCoordinator(private val appContext: Context) {
     }
 
     fun clearCompleted() {
-        scope.launch { dao.deleteCompleted() }
+        scope.launch {
+            val completedIds = dao.getAll()
+                .filter { it.statusEnum() == DownloadStatus.COMPLETED }
+                .map { it.id }
+            completedIds.forEach { speedBuffers.remove(it) }
+            if (completedIds.isNotEmpty()) {
+                _speedHistory.value = _speedHistory.value - completedIds.toSet()
+            }
+            dao.deleteCompleted()
+        }
     }
 
     suspend fun updateYtDlp(): Result<String> {
@@ -291,6 +365,15 @@ class DownloadCoordinator(private val appContext: Context) {
         if (updated != null) {
             if (updated.statusEnum() in setOf(DownloadStatus.DOWNLOADING, DownloadStatus.PROBING, DownloadStatus.MERGING)) {
                 liveStates[updated.id] = updated
+                if (updated.statusEnum() == DownloadStatus.DOWNLOADING) {
+                    val buf = speedBuffers.getOrPut(updated.id) { ArrayDeque() }
+                    val snapshot = synchronized(buf) {
+                        buf.addLast(updated.speedBytesPerSec.coerceAtLeast(0.0))
+                        while (buf.size > 60) buf.removeFirst()
+                        buf.toList()
+                    }
+                    _speedHistory.value = _speedHistory.value + (updated.id to snapshot)
+                }
             } else {
                 liveStates.remove(updated.id)
             }

@@ -151,6 +151,9 @@ sealed class ProbeResult {
 
 data class AppPrefs(
     val defaultConnections: Int = 16,
+    val maxConcurrent: Int = 3,
+    val dynamicSegmentation: Boolean = true,
+    val autoSortByCategory: Boolean = true,
     val defaultVideoQuality: String = "1080",
     val audioFormat: String = "mp3",
     val wifiOnly: Boolean = false,
