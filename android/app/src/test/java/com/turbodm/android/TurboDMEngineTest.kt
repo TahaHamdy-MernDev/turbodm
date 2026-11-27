@@ -3,6 +3,7 @@ package com.turbodm.android
 import com.turbodm.android.data.DownloadEntity
 import com.turbodm.android.data.DownloadStatus
 import com.turbodm.android.engine.SegmentedHttpEngine
+import com.turbodm.android.engine.YtDlpMediaEngine
 import com.turbodm.android.util.Formatters
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
@@ -39,6 +40,26 @@ class TurboDMEngineTest {
         assertTrue(Formatters.isMediaOrSocialUrl("https://www.instagram.com/reel/ABC123/"))
         assertTrue(Formatters.isMediaOrSocialUrl("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"))
         assertFalse(Formatters.isMediaOrSocialUrl("https://proof.ovh.net/files/100Mb.dat"))
+    }
+
+    @Test
+    fun testYouTubeIdAndPlaylistDetectionHelpers() {
+        assertEquals("dQw4w9WgXcQ", Formatters.extractYouTubeVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertEquals("dQw4w9WgXcQ", Formatters.extractYouTubeVideoId("https://youtu.be/dQw4w9WgXcQ?si=xyz"))
+        assertEquals("dQw4w9WgXcQ", Formatters.extractYouTubeVideoId("https://youtube.com/shorts/dQw4w9WgXcQ?feature=share"))
+        assertEquals("dQw4w9WgXcQ", Formatters.extractYouTubeVideoId("https://m.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890"))
+        assertEquals(null, Formatters.extractYouTubeVideoId("https://www.youtube.com/playlist?list=PL1234567890"))
+
+        assertTrue(Formatters.isExplicitPlaylistUrl("https://www.youtube.com/playlist?list=PL1234567890"))
+        assertFalse(Formatters.isExplicitPlaylistUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890"))
+        assertTrue(Formatters.hasDownloadablePlaylistParam("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890"))
+        assertFalse(Formatters.hasDownloadablePlaylistParam("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ"))
+
+        val formats = YtDlpMediaEngine.defaultFormatOptions()
+        assertEquals(1080, formats.first().height)
+        assertTrue(formats.first().id.contains("[vcodec^=avc]"))
+        assertTrue(formats.first().id.contains("[vcodec!^=av01]"))
+        assertTrue(formats.first().id.contains("[vcodec!^=hev]"))
     }
 
     @Test

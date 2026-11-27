@@ -526,6 +526,16 @@ private fun DownloadCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    val (statusText, statusColor, indeterminate) = when {
+                        st == DownloadStatus.PROBING -> Triple("Preparing stream...", TurboColors.CyanTip, true)
+                        st == DownloadStatus.MERGING -> Triple("Merging video & audio...", TurboColors.EmeraldGreen, true)
+                        pct <= 0.1f && item.speedBytesPerSec <= 0.0 -> Triple("Starting download...", TurboColors.CyanTip, true)
+                        else -> Triple(
+                            "${"%.0f".format(pct)}% • ${Formatters.formatSpeed(item.speedBytesPerSec)}",
+                            TurboColors.CyanTip,
+                            false
+                        )
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -545,23 +555,34 @@ private fun DownloadCard(
                             )
                         }
                         Text(
-                            text = "${"%.0f".format(pct)}% • ${Formatters.formatSpeed(item.speedBytesPerSec)}",
-                            color = TurboColors.CyanTip,
+                            text = statusText,
+                            color = statusColor,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    LinearProgressIndicator(
-                        progress = { frac },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(999.dp)),
-                        color = TurboColors.AdwaitaBlue,
-                        trackColor = TurboColors.SurfaceDim,
-                    )
+                    if (indeterminate) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(999.dp)),
+                            color = if (st == DownloadStatus.MERGING) TurboColors.EmeraldGreen else TurboColors.AdwaitaBlue,
+                            trackColor = TurboColors.SurfaceDim,
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            progress = { frac },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(999.dp)),
+                            color = TurboColors.AdwaitaBlue,
+                            trackColor = TurboColors.SurfaceDim,
+                        )
+                    }
                 }
 
                 CircleActionButton(

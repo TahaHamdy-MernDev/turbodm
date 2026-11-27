@@ -50,6 +50,96 @@ object Formatters {
         }
     }
 
+    private val YT_VIDEO_ID_REGEX = Regex("^[A-Za-z0-9_-]{11}$")
+
+    private fun normalizeHost(uri: URI): String =
+        (uri.host ?: "").lowercase().removePrefix("www.").removePrefix("m.")
+
+    private fun isYouTubeHost(host: String): Boolean =
+        host == "youtube.com" || host == "youtu.be" || host == "music.youtube.com" || host == "youtube-nocookie.com"
+
+    fun extractYouTubeVideoId(url: String): String? {
+        return try {
+            val uri = URI(url)
+            val host = normalizeHost(uri)
+            if (!isYouTubeHost(host)) return null
+            val path = uri.path ?: ""
+            if (host == "youtu.be") {
+                val seg = path.trim('/').substringBefore('/')
+                return seg.takeIf { YT_VIDEO_ID_REGEX.matches(it) }
+            }
+            val query = uri.rawQuery.orEmpty()
+            for (pair in query.split('&')) {
+                val eq = pair.indexOf('=')
+                if (eq > 0 && pair.substring(0, eq) == "v") {
+                    val v = URLDecoder.decode(pair.substring(eq + 1), "UTF-8")
+                    if (YT_VIDEO_ID_REGEX.matches(v)) return v
+                }
+            }
+            for (prefix in listOf("/shorts/", "/embed/", "/live/", "/v/")) {
+                if (path.startsWith(prefix)) {
+                    val seg = path.removePrefix(prefix).substringBefore('/').substringBefore('?')
+                    if (YT_VIDEO_ID_REGEX.matches(seg)) return seg
+                }
+            }
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun extractYouTubePlaylistId(url: String): String? {
+        return try {
+            val uri = URI(url)
+            val host = normalizeHost(uri)
+            if (!isYouTubeHost(host)) return null
+            val query = uri.rawQuery.orEmpty()
+            for (pair in query.split('&')) {
+                val eq = pair.indexOf('=')
+                if (eq > 0 && pair.substring(0, eq) == "list") {
+                    val v = URLDecoder.decode(pair.substring(eq + 1), "UTF-8").trim()
+                    if (v.isNotEmpty()) return v
+                }
+            }
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun isExplicitPlaylistUrl(url: String): Boolean {
+        return try {
+            val uri = URI(url)
+            val host = normalizeHost(uri)
+            if (!isYouTubeHost(host)) return false
+            val path = (uri.path ?: "").lowercase()
+            if (path.startsWith("/playlist")) return true
+            val listId = extractYouTubePlaylistId(url) ?: return false
+            if (listId.startsWith("RD", ignoreCase = true) ||
+                listId.equals("WL", ignoreCase = true) ||
+                listId.equals("LL", ignoreCase = true)
+            ) {
+                return false
+            }
+            extractYouTubeVideoId(url) == null
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun hasDownloadablePlaylistParam(url: String): Boolean {
+        return try {
+            val uri = URI(url)
+            if (!isYouTubeHost(normalizeHost(uri))) return false
+            val listId = extractYouTubePlaylistId(url) ?: return false
+            !listId.startsWith("RD", ignoreCase = true) &&
+                !listId.equals("WL", ignoreCase = true) &&
+                !listId.equals("LL", ignoreCase = true)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun isLikelyPlaylistUrl(url: String): Boolean {
         val lower = url.lowercase()
         return (lower.contains("youtube.com") || lower.contains("youtu.be")) &&

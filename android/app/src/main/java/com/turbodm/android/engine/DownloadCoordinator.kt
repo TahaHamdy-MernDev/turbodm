@@ -12,6 +12,7 @@ import com.turbodm.android.data.PrefsRepository
 import com.turbodm.android.data.ProbeResult
 import com.turbodm.android.service.DownloadForegroundService
 import com.turbodm.android.util.Formatters
+import com.turbodm.android.util.StoragePublisher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -120,11 +121,14 @@ class DownloadCoordinator(private val appContext: Context) {
     suspend fun probeUrl(url: String): ProbeResult {
         val trimmed = url.trim()
         return if (Formatters.isMediaOrSocialUrl(trimmed)) {
-            mediaEngine.probeMedia(appContext, trimmed)
+            mediaEngine.probeMedia(appContext, trimmed, forcePlaylist = false)
         } else {
             httpEngine.probeDirectFile(trimmed)
         }
     }
+
+    suspend fun probePlaylistExplicit(url: String): ProbeResult =
+        mediaEngine.probeMedia(appContext, url.trim(), forcePlaylist = true)
 
     fun enqueueDirectDownload(
         probe: ProbeResult.DirectFile,
@@ -256,7 +260,14 @@ class DownloadCoordinator(private val appContext: Context) {
                     }
 
                     val result = if (fresh.isMedia) {
-                        mediaEngine.downloadMedia(appContext, fresh, pauseFlag, cancelFlag, onProgress)
+                        mediaEngine.downloadMedia(
+                            context = appContext,
+                            entity = fresh,
+                            pauseRequested = pauseFlag,
+                            cancelRequested = cancelFlag,
+                            autoSortByCategory = prefs.state.value.autoSortByCategory,
+                            onProgress = onProgress,
+                        )
                     } else {
                         httpEngine.download(
                             entity = fresh,
@@ -269,7 +280,9 @@ class DownloadCoordinator(private val appContext: Context) {
                     dao.upsert(result)
 
                     if (result.statusEnum() == DownloadStatus.COMPLETED && result.filePath.isNotBlank()) {
-                        scanMediaFile(result.filePath)
+                        if (!result.filePath.startsWith("content://")) {
+                            scanMediaFile(result.filePath)
+                        }
                         DownloadForegroundService.notifyCompleted(appContext, result)
                     }
                 }
@@ -328,10 +341,11 @@ class DownloadCoordinator(private val appContext: Context) {
         _speedHistory.value = _speedHistory.value - downloadId
         scope.launch {
             val item = dao.getById(downloadId)
+            runCatching { File(appContext.filesDir, "ytdlp_work/$downloadId").deleteRecursively() }
             if (item != null) {
                 runCatching { File(item.saveDir, "${item.filename}.turbodm.part").delete() }
                 if (deleteFile && item.filePath.isNotBlank()) {
-                    runCatching { File(item.filePath).delete() }
+                    StoragePublisher.deletePublishedFile(appContext, item.filePath)
                 }
             }
             dao.deleteById(downloadId)

@@ -1,13 +1,14 @@
 package com.turbodm.android
 
 import android.Manifest
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -83,6 +84,7 @@ import com.turbodm.android.ui.screens.SettingsScreen
 import com.turbodm.android.ui.theme.TurboColors
 import com.turbodm.android.ui.theme.TurboDMTheme
 import com.turbodm.android.util.Formatters
+import com.turbodm.android.util.StoragePublisher
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -494,19 +496,38 @@ class MainActivity : ComponentActivity() {
     }.getOrNull()
 
     private fun openDownloadedFile(item: DownloadEntity) {
-        val file = File(item.filePath.ifBlank { File(item.saveDir, item.filename).absolutePath })
-        if (!file.exists()) {
-            Toast.makeText(this, "File not found: ${file.name}", Toast.LENGTH_SHORT).show()
-            return
+        val pathOrUri = item.filePath.ifBlank { File(item.saveDir, item.filename).absolutePath }
+        val ext = item.filename.substringAfterLast('.', "").lowercase()
+        val uri: Uri
+        val mime: String
+
+        if (pathOrUri.startsWith("content://")) {
+            uri = Uri.parse(pathOrUri)
+            val exists = runCatching {
+                contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+            }.getOrDefault(false)
+            if (!exists) {
+                Toast.makeText(this, "File not found: ${item.filename}", Toast.LENGTH_SHORT).show()
+                return
+            }
+            mime = contentResolver.getType(uri)
+                ?: StoragePublisher.mimeTypeForFilename(item.filename)
+        } else {
+            val file = File(pathOrUri)
+            if (!file.exists()) {
+                Toast.makeText(this, "File not found: ${file.name}", Toast.LENGTH_SHORT).show()
+                return
+            }
+            uri = FileProvider.getUriForFile(this, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
+            mime = StoragePublisher.mimeTypeForFilename(file.name)
         }
-        val uri = FileProvider.getUriForFile(this, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
-        val ext = file.extension.lowercase()
-        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "*/*"
+
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mime)
+            clipData = ClipData.newRawUri(item.filename, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        runCatching { startActivity(Intent.createChooser(intent, "Open ${file.name}")) }
+        runCatching { startActivity(Intent.createChooser(intent, "Open ${item.filename}")) }
             .onFailure { Toast.makeText(this, "No app available to open $ext files", Toast.LENGTH_SHORT).show() }
     }
 }

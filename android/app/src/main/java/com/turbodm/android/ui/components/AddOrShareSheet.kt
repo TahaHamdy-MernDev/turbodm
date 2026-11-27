@@ -148,6 +148,35 @@ fun AddOrShareSheetContent(
         }
     }
 
+    fun runPlaylistProbe(targetUrl: String) {
+        val clean = Formatters.extractUrl(targetUrl) ?: targetUrl.trim()
+        if (!clean.startsWith("http://", true) && !clean.startsWith("https://", true)) return
+        urlInput = clean
+        isProbing = true
+        probeError = null
+        probeResult = null
+        scope.launch {
+            runCatching { coordinator.probePlaylistExplicit(clean) }
+                .onSuccess { res ->
+                    probeResult = res
+                    when (res) {
+                        is ProbeResult.DirectFile -> customFilename = res.filename
+                        is ProbeResult.SingleMedia -> selectedFormat = pickPreferredFormat(res.formats)
+                        is ProbeResult.Playlist -> {
+                            selectedFormat = pickPreferredFormat(res.formats)
+                            selectedPlaylistIds.clear()
+                            selectedPlaylistIds.addAll(res.entries.map { it.id })
+                        }
+                    }
+                    isProbing = false
+                }
+                .onFailure { err ->
+                    probeError = err.message?.lines()?.lastOrNull { it.isNotBlank() } ?: "Could not load playlist"
+                    isProbing = false
+                }
+        }
+    }
+
     LaunchedEffect(initialUrl) {
         if (initialUrl.isNotBlank()) {
             runProbe(initialUrl)
@@ -204,7 +233,7 @@ fun AddOrShareSheetContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                if (probeResult is ProbeResult.Playlist || Formatters.isLikelyPlaylistUrl(urlInput)) {
+                if (probeResult is ProbeResult.Playlist || Formatters.isExplicitPlaylistUrl(urlInput)) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
                         contentDescription = null,
@@ -462,6 +491,31 @@ fun AddOrShareSheetContent(
                         selectedFormat = selectedFormat,
                         onSelectFormat = { selectedFormat = it },
                     )
+                    if (!isProbing && Formatters.hasDownloadablePlaylistParam(res.url)) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(TurboColors.PrimaryContainer)
+                                .border(1.dp, TurboColors.AdwaitaBlue.copy(alpha = 0.6f), RoundedCornerShape(999.dp))
+                                .clickable { runPlaylistProbe(res.url) }
+                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
+                                contentDescription = null,
+                                tint = TurboColors.AdwaitaBlue,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = "Load full playlist",
+                                color = TurboColors.OnPrimaryContainer,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
                 }
 
                 is ProbeResult.Playlist -> {
