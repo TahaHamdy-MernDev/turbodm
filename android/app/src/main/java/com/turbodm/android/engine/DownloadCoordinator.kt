@@ -44,7 +44,8 @@ class DownloadCoordinator(private val appContext: Context) {
     val dao = db.downloadDao()
     val prefs = PrefsRepository(appContext)
     val httpEngine = SegmentedHttpEngine()
-    val mediaEngine = YtDlpMediaEngine()
+    val youtubeNativeEngine = YouTubeNativeEngine()
+    val mediaEngine = YtDlpMediaEngine(youtubeNativeEngine)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val slotMutex = Mutex()
@@ -274,7 +275,21 @@ class DownloadCoordinator(private val appContext: Context) {
                     }
 
                     val result = if (fresh.isMedia) {
-                        mediaEngine.downloadMedia(
+                        val tryNativeYouTube = Formatters.extractYouTubeVideoId(fresh.url) != null &&
+                            !YouTubeCookieHelper.hasSavedCookies(appContext)
+                        val nativeRes = if (tryNativeYouTube) {
+                            youtubeNativeEngine.downloadNative(
+                                context = appContext,
+                                entity = fresh,
+                                httpEngine = httpEngine,
+                                pauseRequested = pauseFlag,
+                                cancelRequested = cancelFlag,
+                                autoSortByCategory = prefs.state.value.autoSortByCategory,
+                                onProgress = onProgress,
+                            )
+                        } else null
+
+                        nativeRes ?: mediaEngine.downloadMedia(
                             context = appContext,
                             entity = fresh,
                             pauseRequested = pauseFlag,

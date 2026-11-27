@@ -457,11 +457,13 @@ private fun DownloadCard(
         }
 
         item.isMedia && isActive -> {
-            // Card 2: Active Social Video Download with thumbnail & platform badge
+            // Card 2: Active Social Video Download with thumbnail, platform badge & live 16-segment byte map
             val pct = Formatters.progressPercent(item.downloadedSize, item.totalSize)
             val frac = Formatters.progressFraction(item.downloadedSize, item.totalSize, item.status)
+            val segments = item.segments()
+            val hasMultiSegments = st == DownloadStatus.DOWNLOADING && segments.size > 1
 
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(cardShape)
@@ -469,128 +471,178 @@ private fun DownloadCard(
                     .border(1.dp, TurboColors.Outline, cardShape)
                     .clickable(onClick = onClick)
                     .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 96.dp, height = 56.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(TurboColors.SurfaceDim)
-                        .border(1.dp, TurboColors.Outline, RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    if (item.thumbnailUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = item.thumbnailUrl,
-                            contentDescription = item.filename,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Movie,
-                            contentDescription = null,
-                            tint = TurboColors.AdwaitaBlue,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(4.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(TurboColors.SurfaceDim.copy(alpha = 0.9f))
-                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                            .size(width = 96.dp, height = 56.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(TurboColors.SurfaceDim)
+                            .border(1.dp, TurboColors.Outline, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = item.platform,
-                            color = TurboColors.OnSurface,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 9.5.sp,
-                            maxLines = 1,
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        text = item.filename,
-                        color = TurboColors.OnSurface,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.5.sp,
-                        lineHeight = 19.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    val (statusText, statusColor, indeterminate) = when {
-                        st == DownloadStatus.PROBING -> Triple("Preparing stream...", TurboColors.CyanTip, true)
-                        st == DownloadStatus.MERGING -> Triple("Merging video & audio...", TurboColors.EmeraldGreen, true)
-                        pct <= 0.1f && item.speedBytesPerSec <= 0.0 -> Triple("Starting download...", TurboColors.CyanTip, true)
-                        else -> Triple(
-                            "${"%.0f".format(pct)}% • ${Formatters.formatSpeed(item.speedBytesPerSec)}",
-                            TurboColors.CyanTip,
-                            false
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(TurboColors.PrimaryContainer)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = if (item.mediaAudioOnly) "Audio" else item.filename.substringAfterLast('.', "MP4").uppercase(),
-                                color = TurboColors.OnPrimaryContainer,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
+                        if (item.thumbnailUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = item.thumbnailUrl,
+                                contentDescription = item.filename,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Movie,
+                                contentDescription = null,
+                                tint = TurboColors.AdwaitaBlue,
+                                modifier = Modifier.size(24.dp),
                             )
                         }
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(4.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(TurboColors.SurfaceDim.copy(alpha = 0.9f))
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = item.platform,
+                                color = TurboColors.OnSurface,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 9.5.sp,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
                         Text(
-                            text = statusText,
-                            color = statusColor,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            maxLines = 1,
+                            text = item.filename,
+                            color = TurboColors.OnSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.5.sp,
+                            lineHeight = 19.sp,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        val (statusText, statusColor, indeterminate) = when {
+                            st == DownloadStatus.PROBING -> Triple("Preparing stream...", TurboColors.CyanTip, true)
+                            st == DownloadStatus.MERGING -> Triple("Merging video & audio...", TurboColors.EmeraldGreen, true)
+                            pct <= 0.1f && item.speedBytesPerSec <= 0.0 -> Triple("Starting download...", TurboColors.CyanTip, true)
+                            else -> Triple(
+                                "${"%.0f".format(pct)}% • ${Formatters.formatSpeed(item.speedBytesPerSec)}",
+                                TurboColors.CyanTip,
+                                false
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(TurboColors.PrimaryContainer)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            ) {
+                                Text(
+                                    text = if (item.mediaAudioOnly) "Audio" else item.filename.substringAfterLast('.', "MP4").uppercase(),
+                                    color = TurboColors.OnPrimaryContainer,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                            Text(
+                                text = statusText,
+                                color = statusColor,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (!hasMultiSegments) {
+                            if (indeterminate) {
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(999.dp)),
+                                    color = if (st == DownloadStatus.MERGING) TurboColors.EmeraldGreen else TurboColors.AdwaitaBlue,
+                                    trackColor = TurboColors.SurfaceDim,
+                                )
+                            } else {
+                                LinearProgressIndicator(
+                                    progress = { frac },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(999.dp)),
+                                    color = TurboColors.AdwaitaBlue,
+                                    trackColor = TurboColors.SurfaceDim,
+                                )
+                            }
+                        }
                     }
-                    if (indeterminate) {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(999.dp)),
-                            color = if (st == DownloadStatus.MERGING) TurboColors.EmeraldGreen else TurboColors.AdwaitaBlue,
-                            trackColor = TurboColors.SurfaceDim,
+
+                    CircleActionButton(
+                        icon = Icons.Default.Pause,
+                        contentDescription = "Pause download",
+                        tint = TurboColors.AdwaitaBlue,
+                        onClick = onToggle,
+                    )
+                }
+
+                if (hasMultiSegments) {
+                    SegmentByteMap(
+                        item = item,
+                        height = 14.dp,
+                        innerPadding = 3.dp,
+                        trackColor = TurboColors.SurfaceDim,
+                        borderColor = TurboColors.OutlineSubtle,
+                        cornerRadiusDp = 6.dp,
+                        cellGap = 2.dp,
+                    )
+                    HorizontalDivider(thickness = 1.dp, color = TurboColors.OutlineSubtle)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "${Formatters.formatBytes(item.downloadedSize)} / ${Formatters.formatBytes(item.totalSize)}",
+                            color = TurboColors.OnSurfaceVariant,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
                         )
-                    } else {
-                        LinearProgressIndicator(
-                            progress = { frac },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(999.dp)),
-                            color = TurboColors.AdwaitaBlue,
-                            trackColor = TurboColors.SurfaceDim,
+                        Text(
+                            text = Formatters.formatSpeed(item.speedBytesPerSec),
+                            color = TurboColors.CyanTip,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                        )
+                        Text(
+                            text = "${Formatters.formatEta(item.etaSeconds)} left",
+                            color = TurboColors.OnSurfaceVariant,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                        )
+                        Text(
+                            text = "${segments.size} threads",
+                            color = TurboColors.OnSurfaceVariant,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
                         )
                     }
                 }
-
-                CircleActionButton(
-                    icon = Icons.Default.Pause,
-                    contentDescription = "Pause download",
-                    tint = TurboColors.AdwaitaBlue,
-                    onClick = onToggle,
-                )
             }
         }
 

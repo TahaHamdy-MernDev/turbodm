@@ -3,6 +3,7 @@ package com.turbodm.android
 import com.turbodm.android.data.DownloadEntity
 import com.turbodm.android.data.DownloadStatus
 import com.turbodm.android.engine.SegmentedHttpEngine
+import com.turbodm.android.engine.YouTubeNativeEngine
 import com.turbodm.android.engine.YtDlpMediaEngine
 import com.turbodm.android.util.Formatters
 import kotlinx.coroutines.runBlocking
@@ -11,9 +12,11 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import okio.Buffer
+import org.json.JSONObject
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -132,5 +135,115 @@ class TurboDMEngineTest {
             server.shutdown()
             tmpDir.deleteRecursively()
         }
+    }
+
+    @Test
+    fun testChunkedMultipartRangeDownloadByteExact() = runBlocking {
+        val payload = Random(99).nextBytes(1400 * 1024) // ~1.4 MB -> forces multiple 128 KB sub-chunks per segment
+        var headCalls = 0
+        val server = MockWebServer()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.method == "HEAD") {
+                    headCalls++
+                    return MockResponse().setResponseCode(405)
+                }
+                val range = request.getHeader("Range")
+                if (range != null && range.startsWith("bytes=")) {
+                    val parts = range.removePrefix("bytes=").split("-")
+                    val start = parts[0].toInt()
+                    val end = parts[1].toInt().coerceAtMost(payload.lastIndex)
+                    val slice = payload.copyOfRange(start, end + 1)
+                    return MockResponse()
+                        .setResponseCode(206)
+                        .addHeader("Accept-Ranges", "bytes")
+                        .addHeader("Content-Range", "bytes $start-$end/${payload.size}")
+                        .addHeader("Content-Length", slice.size.toString())
+                        .setBody(Buffer().write(slice))
+                }
+                return MockResponse().setResponseCode(400)
+            }
+        }
+        server.start()
+        val tmpDir = Files.createTempDirectory("turbodm-chunked-test").toFile()
+        try {
+            val engine = SegmentedHttpEngine()
+            val url = server.url("/yt-stream.mp4").toString()
+            val entity = DownloadEntity(
+                url = url,
+                finalUrl = url,
+                filename = "yt-stream.mp4",
+                saveDir = tmpDir.absolutePath,
+                totalSize = payload.size.toLong(),
+                resumable = true,
+                maxConnections = 4,
+            )
+            val result = engine.download(
+                entity = entity,
+                pauseRequested = AtomicBoolean(false),
+                cancelRequested = AtomicBoolean(false),
+                dynamicSplitEnabled = true,
+                maxRangeChunkBytes = 128L * 1024L,
+                skipProbe = true,
+                onProgress = {},
+            )
+            assertEquals(DownloadStatus.COMPLETED.name, result.status)
+            assertEquals(0, headCalls)
+            val savedFile = File(result.filePath)
+            assertTrue(savedFile.exists())
+            assertArrayEquals(payload, savedFile.readBytes())
+        } finally {
+            server.shutdown()
+            tmpDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testYouTubeInnertubeParserAndAria2cProgress() {
+        val sampleJson = JSONObject(
+            """
+            {
+              "playabilityStatus": {"status": "OK"},
+              "videoDetails": {
+                "videoId": "dQw4w9WgXcQ",
+                "title": "Test YouTube HD",
+                "author": "Turbo Channel",
+                "lengthSeconds": "213",
+                "thumbnail": {"thumbnails": [{"url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", "width": 480}]}
+              },
+              "streamingData": {
+                "adaptiveFormats": [
+                  {"itag": 399, "url": "https://rr1.googlevideo.com/av1", "mimeType": "video/mp4; codecs=\"av01.0.08M.08\"", "height": 1080, "bitrate": 3500000, "contentLength": "50000000"},
+                  {"itag": 137, "url": "https://rr1.googlevideo.com/h264_1080", "mimeType": "video/mp4; codecs=\"avc1.640028\"", "height": 1080, "bitrate": 4000000, "contentLength": "60000000"},
+                  {"itag": 136, "url": "https://rr1.googlevideo.com/h264_720", "mimeType": "video/mp4; codecs=\"avc1.4d401f\"", "height": 720, "bitrate": 2000000, "contentLength": "30000000"},
+                  {"itag": 140, "url": "https://rr1.googlevideo.com/m4a", "mimeType": "audio/mp4; codecs=\"mp4a.40.2\"", "bitrate": 128000, "contentLength": "4000000"},
+                  {"itag": 251, "url": "https://rr1.googlevideo.com/opus", "mimeType": "audio/webm; codecs=\"opus\"", "bitrate": 160000, "contentLength": "4500000"}
+                ]
+              }
+            }
+            """.trimIndent()
+        )
+        val extracted = YouTubeNativeEngine.parseInnertubeResponse("dQw4w9WgXcQ", sampleJson)
+        assertNotNull(extracted)
+        extracted!!
+        assertEquals("Test YouTube HD", extracted.title)
+        assertEquals(213L, extracted.durationSec)
+        assertTrue(extracted.videoStreams.none { it.mimeType.contains("av01") })
+
+        val (v1080, a1080) = YouTubeNativeEngine.selectStreams(
+            extracted,
+            YtDlpMediaEngine.androidMp4Selector(1080),
+            audioOnly = false
+        )
+        assertEquals(137, v1080?.itag)
+        assertEquals(140, a1080?.itag)
+
+        val aria = YtDlpMediaEngine.parseAria2cProgress("[#1a2b3c 12.5MiB/50.0MiB(25%) CN:8 DL:3.8MiB ETA:10s]")
+        assertNotNull(aria)
+        aria!!
+        assertEquals(25f, aria.percent, 0.01f)
+        assertEquals(10L, aria.etaSeconds)
+        assertTrue(aria.speedBytesPerSec > 3.5 * 1024 * 1024)
+        assertTrue(aria.totalBytes > 49 * 1024 * 1024)
     }
 }

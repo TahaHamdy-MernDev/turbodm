@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -48,8 +49,9 @@ class SegmentedHttpEngine(
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .followRedirects(true)
             .followSslRedirects(true)
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(12, TimeUnit.SECONDS)
+            .connectionPool(ConnectionPool(32, 2, TimeUnit.MINUTES))
             .retryOnConnectionFailure(true)
             .build()
     }
@@ -127,6 +129,9 @@ class SegmentedHttpEngine(
         pauseRequested: AtomicBoolean,
         cancelRequested: AtomicBoolean,
         dynamicSplitEnabled: Boolean = true,
+        userAgent: String = USER_AGENT,
+        maxRangeChunkBytes: Long = 8L * 1024L * 1024L,
+        skipProbe: Boolean = false,
         onProgress: suspend (DownloadEntity) -> Unit,
     ): DownloadEntity = withContext(Dispatchers.IO) {
         var current = entity.copy(
@@ -142,15 +147,23 @@ class SegmentedHttpEngine(
 
         try {
             val existingSegments = current.segments()
-            val alreadyProbed = existingSegments.isEmpty() &&
-                (current.totalSize ?: 0L) > 0L &&
-                current.resumable &&
-                current.finalUrl.isNotBlank()
+            val knownSize = current.totalSize ?: 0L
+            val canDirectStart = knownSize > 0L && current.resumable && current.finalUrl.isNotBlank()
 
             val canResumeExisting: Boolean
             val segments = CopyOnWriteArrayList<SegmentState>()
 
-            if (alreadyProbed) {
+            if (skipProbe && canDirectStart && existingSegments.isNotEmpty() && partFile.exists()) {
+                canResumeExisting = true
+                existingSegments.forEach { seg ->
+                    if (!seg.isComplete) {
+                        seg.status = SegmentStatus.PENDING
+                        seg.speedBytesPerSec = 0.0
+                        seg.error = ""
+                    }
+                }
+                segments.addAll(existingSegments)
+            } else if (existingSegments.isEmpty() && canDirectStart) {
                 canResumeExisting = false
                 segments.addAll(
                     createInitialSegments(
@@ -223,6 +236,8 @@ class SegmentedHttpEngine(
                     totalSize = current.totalSize,
                     maxConns = current.maxConnections.coerceIn(1, 32),
                     dynamicSplitEnabled = dynamicSplitEnabled,
+                    userAgent = userAgent,
+                    maxRangeChunkBytes = maxRangeChunkBytes,
                     segments = segments,
                     nextSegIndex = nextSegIndex,
                     channel = channel,
@@ -333,6 +348,8 @@ class SegmentedHttpEngine(
         totalSize: Long?,
         maxConns: Int,
         dynamicSplitEnabled: Boolean,
+        userAgent: String,
+        maxRangeChunkBytes: Long,
         segments: CopyOnWriteArrayList<SegmentState>,
         nextSegIndex: AtomicInteger,
         channel: FileChannel,
@@ -349,6 +366,8 @@ class SegmentedHttpEngine(
                 downloadSegment(
                     url = url,
                     resumable = resumable,
+                    userAgent = userAgent,
+                    maxRangeChunkBytes = maxRangeChunkBytes,
                     seg = seg,
                     channel = channel,
                     splitLock = splitLock,
@@ -429,6 +448,8 @@ class SegmentedHttpEngine(
     private suspend fun downloadSegment(
         url: String,
         resumable: Boolean,
+        userAgent: String,
+        maxRangeChunkBytes: Long,
         seg: SegmentState,
         channel: FileChannel,
         splitLock: Any,
@@ -436,7 +457,7 @@ class SegmentedHttpEngine(
         cancelRequested: AtomicBoolean,
         fatalError: AtomicReference<String?>,
     ) {
-        val maxRetries = 5
+        val maxRetries = 10
         var attempt = 0
         val readBuf = ByteArray(READ_BUFFER_SIZE)
         val writeBuf = ByteArray(WRITE_BUFFER_SIZE)
@@ -450,14 +471,23 @@ class SegmentedHttpEngine(
 
             seg.status = SegmentStatus.CONNECTING
             seg.error = ""
+            val isRanged = seg.end >= 0L && resumable
+            val reqStart = seg.currentOffset
+            val reqEnd = if (isRanged && maxRangeChunkBytes > 0L) {
+                minOf(seg.end, reqStart + maxRangeChunkBytes - 1L)
+            } else {
+                seg.end
+            }
+            val expectedChunkBytes = if (isRanged) (reqEnd - reqStart + 1L).coerceAtLeast(0L) else -1L
+            var bytesReadThisRequest = 0L
+
             val reqBuilder = Request.Builder()
                 .url(url)
                 .get()
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", userAgent)
                 .header("Accept-Encoding", "identity")
-            val isRanged = seg.end >= 0L && resumable
             if (isRanged) {
-                reqBuilder.header("Range", "bytes=${seg.currentOffset}-${seg.end}")
+                reqBuilder.header("Range", "bytes=$reqStart-$reqEnd")
             }
 
             try {
@@ -479,7 +509,7 @@ class SegmentedHttpEngine(
                     seg.status = SegmentStatus.RECEIVING
 
                     var writeBufPos = 0
-                    var writeFileOffset = seg.currentOffset
+                    var writeFileOffset = reqStart
                     var windowStartNs = System.nanoTime()
                     var windowBytes = 0L
 
@@ -505,17 +535,22 @@ class SegmentedHttpEngine(
                             var reachedEnd = false
                             synchronized(splitLock) {
                                 if (seg.end >= 0L) {
-                                    val rem = seg.end - seg.currentOffset + 1L
-                                    if (rem <= 0L) {
+                                    val chunkRem = if (isRanged) {
+                                        minOf(seg.end, reqEnd) - seg.currentOffset + 1L
+                                    } else {
+                                        seg.end - seg.currentOffset + 1L
+                                    }
+                                    if (chunkRem <= 0L) {
                                         toTake = 0
                                         reachedEnd = true
-                                    } else if (toTake >= rem) {
-                                        toTake = rem.toInt()
+                                    } else if (toTake >= chunkRem) {
+                                        toTake = chunkRem.toInt()
                                         reachedEnd = true
                                     }
                                 }
                                 if (toTake > 0) {
                                     seg.downloaded += toTake
+                                    bytesReadThisRequest += toTake
                                 }
                             }
 
@@ -558,6 +593,10 @@ class SegmentedHttpEngine(
                     seg.speedBytesPerSec = 0.0
                     return
                 }
+                if (isRanged && maxRangeChunkBytes > 0L && bytesReadThisRequest >= expectedChunkBytes) {
+                    attempt = 0
+                    continue
+                }
                 throw RuntimeException("Connection closed before segment finished")
             } catch (ce: CancellationException) {
                 seg.status = SegmentStatus.PAUSED
@@ -572,7 +611,7 @@ class SegmentedHttpEngine(
                     fatalError.compareAndSet(null, "Segment #${seg.index + 1} failed: ${seg.error}")
                     return
                 }
-                delay((500L * (1L shl (attempt - 1))).coerceAtMost(8000L))
+                delay((500L * attempt).coerceAtMost(4000L))
             }
         }
     }

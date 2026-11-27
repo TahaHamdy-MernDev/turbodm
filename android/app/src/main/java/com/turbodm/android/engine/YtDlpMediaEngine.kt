@@ -12,6 +12,7 @@ import com.turbodm.android.data.SegmentStatus
 import com.turbodm.android.util.Formatters
 import com.turbodm.android.util.StoragePublisher
 import com.turbodm.android.util.YouTubeCookieHelper
+import com.yausername.aria2c.Aria2c
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -36,12 +37,16 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Social media & streaming engine powered by fast pure-Kotlin HTTP probing + cached yt-dlp/ffmpeg.
  * Guarantees Android hardware-playable H.264 + AAC MP4 output (+faststart) and clean MediaStore publishing.
  */
-class YtDlpMediaEngine {
+class YtDlpMediaEngine(
+    private val youtubeNativeEngine: YouTubeNativeEngine = YouTubeNativeEngine(),
+) {
 
     private val initMutex = Mutex()
     private val updateMutex = Mutex()
     @Volatile
     private var initialized = false
+    @Volatile
+    private var aria2cAvailable = false
     @Volatile
     private var cachedVersion: String? = null
     @Volatile
@@ -59,6 +64,54 @@ class YtDlpMediaEngine {
         private const val TAG = "YtDlpMediaEngine"
         private const val MOBILE_UA =
             "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+
+        data class Aria2cProgress(
+            val downloadedBytes: Long,
+            val totalBytes: Long,
+            val percent: Float,
+            val speedBytesPerSec: Double,
+            val etaSeconds: Long?,
+        )
+
+        private val ARIA2C_PROGRESS_REGEX = Regex(
+            """\[#\S+\s+([0-9.]+)(GiB|MiB|KiB|B)/([0-9.]+)(GiB|MiB|KiB|B)\((\d+)%\).*?DL:([0-9.]+)(GiB|MiB|KiB|B)(?:/s)?(?:\s+ETA:([0-9dhms]+))?""",
+            RegexOption.IGNORE_CASE
+        )
+
+        private fun scaleUnit(value: Double, unit: String): Double = when (unit.lowercase()) {
+            "gib", "gb" -> value * 1024.0 * 1024.0 * 1024.0
+            "mib", "mb" -> value * 1024.0 * 1024.0
+            "kib", "kb" -> value * 1024.0
+            else -> value
+        }
+
+        private fun parseAria2cEta(raw: String?): Long? {
+            if (raw.isNullOrBlank()) return null
+            var total = 0L
+            var matched = false
+            Regex("""(\d+)([dhms])""", RegexOption.IGNORE_CASE).findAll(raw).forEach { m ->
+                val v = m.groupValues[1].toLongOrNull() ?: return@forEach
+                matched = true
+                total += when (m.groupValues[2].lowercase()) {
+                    "d" -> v * 86400L
+                    "h" -> v * 3600L
+                    "m" -> v * 60L
+                    else -> v
+                }
+            }
+            return if (matched) total else null
+        }
+
+        internal fun parseAria2cProgress(line: String?): Aria2cProgress? {
+            if (line.isNullOrBlank() || !line.contains("[#")) return null
+            val m = ARIA2C_PROGRESS_REGEX.find(line) ?: return null
+            val dl = scaleUnit(m.groupValues[1].toDoubleOrNull() ?: return null, m.groupValues[2]).toLong()
+            val tot = scaleUnit(m.groupValues[3].toDoubleOrNull() ?: return null, m.groupValues[4]).toLong()
+            val pct = (m.groupValues[5].toFloatOrNull() ?: 0f).coerceIn(0f, 100f)
+            val speed = scaleUnit(m.groupValues[6].toDoubleOrNull() ?: 0.0, m.groupValues[7])
+            val eta = parseAria2cEta(m.groupValues.getOrNull(8))
+            return Aria2cProgress(dl, tot, pct, speed, eta)
+        }
 
         fun androidMp4Selector(maxHeight: Int?): String {
             return if (maxHeight != null) {
@@ -97,6 +150,12 @@ class YtDlpMediaEngine {
                 val appCtx = context.applicationContext
                 YoutubeDL.getInstance().init(appCtx)
                 FFmpeg.getInstance().init(appCtx)
+                aria2cAvailable = runCatching {
+                    Aria2c.getInstance().init(appCtx)
+                    true
+                }.onFailure {
+                    Log.w(TAG, "Aria2c init unavailable, using built-in downloader", it)
+                }.getOrDefault(false)
                 initialized = true
                 val ver = runCatching { YoutubeDL.getInstance().version(appCtx) }.getOrNull() ?: "Ready"
                 cachedVersion = ver
@@ -175,17 +234,29 @@ class YtDlpMediaEngine {
         var title = ""
         var uploader = ""
         var thumbnail = ""
+        var durationSec: Long? = null
+        var formatOptions: List<MediaFormatOption>? = null
 
         val ytVid = Formatters.extractYouTubeVideoId(url)
         if (ytVid != null) {
-            thumbnail = "https://i.ytimg.com/vi/$ytVid/hqdefault.jpg"
-            val canonical = "https://www.youtube.com/watch?v=$ytVid"
-            val oembedUrl = "https://www.youtube.com/oembed?url=${URLEncoder.encode(canonical, "UTF-8")}&format=json"
-            val json = fetchJson(oembedUrl)
-            if (json != null) {
-                title = json.optString("title", "").trim()
-                uploader = json.optString("author_name", "").trim()
-                json.optString("thumbnail_url", "").trim().takeIf { it.isNotBlank() }?.let { thumbnail = it }
+            // Pre-warms native Innertube cache in ~0.35s for instant Download start + exact formats/duration
+            val extracted = youtubeNativeEngine.extract(ytVid, forceRefresh = false)
+            if (extracted != null) {
+                title = extracted.title
+                uploader = extracted.uploader
+                thumbnail = extracted.thumbnailUrl
+                durationSec = extracted.durationSec
+                formatOptions = YouTubeNativeEngine.toFormatOptions(extracted)
+            } else {
+                thumbnail = "https://i.ytimg.com/vi/$ytVid/hqdefault.jpg"
+                val canonical = "https://www.youtube.com/watch?v=$ytVid"
+                val oembedUrl = "https://www.youtube.com/oembed?url=${URLEncoder.encode(canonical, "UTF-8")}&format=json"
+                val json = fetchJson(oembedUrl)
+                if (json != null) {
+                    title = json.optString("title", "").trim()
+                    uploader = json.optString("author_name", "").trim()
+                    json.optString("thumbnail_url", "").trim().takeIf { it.isNotBlank() }?.let { thumbnail = it }
+                }
             }
         } else if (platform == "TikTok") {
             val resolved = resolveFinalUrl(url)
@@ -212,9 +283,9 @@ class YtDlpMediaEngine {
             title = title.ifBlank { "$platform Video" },
             uploader = uploader,
             platform = platform,
-            durationSec = null,
+            durationSec = durationSec,
             thumbnailUrl = thumbnail,
-            formats = defaultFormatOptions(),
+            formats = formatOptions ?: defaultFormatOptions(),
         )
     }
 
@@ -323,11 +394,20 @@ class YtDlpMediaEngine {
             addOption("--socket-timeout", "15")
             addOption("--cache-dir", cacheDir.absolutePath)
             addOption("--http-chunk-size", "10M")
-            addOption("--concurrent-fragments", "4")
+            addOption("--concurrent-fragments", "6")
             addOption("--retries", "3")
             addOption("--fragment-retries", "3")
             addOption("-o", outputTemplate)
             addOption("--print", "after_move:TURBODM_FINAL_PATH:%(filepath)s")
+
+            if (aria2cAvailable) {
+                addOption("--downloader", "libaria2c.so")
+                addOption("--downloader", "dash,m3u8:native")
+                addOption(
+                    "--downloader-args",
+                    "aria2c:-x 8 -s 8 -k 1M --max-tries=8 --retry-wait=2 --connect-timeout=10 --timeout=12 --summary-interval=1"
+                )
+            }
 
             if (isYouTubeUrl(current.url) && YouTubeCookieHelper.hasSavedCookies(context)) {
                 addOption("--cookies", YouTubeCookieHelper.cookieFile(context).absolutePath)
@@ -378,28 +458,34 @@ class YtDlpMediaEngine {
                     return@execute
                 }
                 val safeLine = line.orEmpty()
+                val aria = parseAria2cProgress(safeLine)
                 val isMerging = safeLine.contains("[Merger]", ignoreCase = true) ||
                     safeLine.contains("[VideoRemuxer]", ignoreCase = true) ||
                     safeLine.contains("[ExtractAudio]", ignoreCase = true) ||
                     safeLine.contains("[Fixup", ignoreCase = true) ||
                     safeLine.contains("Deleting original file", ignoreCase = true)
-                val isDownloading = progress >= 0f || safeLine.contains("[download]")
+                val isDownloading = aria != null || progress >= 0f || safeLine.contains("[download]")
                 if (!isMerging && !isDownloading) return@execute
 
                 val now = System.currentTimeMillis()
-                if (!isMerging && progress < 100f && now - lastEmitMs < 250L) return@execute
+                val effPct = aria?.percent ?: progress.coerceIn(0f, 100f)
+                if (!isMerging && effPct < 100f && now - lastEmitMs < 250L) return@execute
                 lastEmitMs = now
 
-                val pct = progress.coerceIn(0f, 100f)
-                val parsedSpeed = parseSpeedFromLine(safeLine)
-                val parsedTotal = parseTotalSizeFromLine(safeLine) ?: current.totalSize ?: 100L
-                val dlBytes = ((pct / 100.0) * parsedTotal).toLong()
+                val parsedSpeed = aria?.speedBytesPerSec ?: parseSpeedFromLine(safeLine)
+                val parsedTotal = aria?.totalBytes?.takeIf { it > 0L }
+                    ?: parseTotalSizeFromLine(safeLine)
+                    ?: current.totalSize
+                    ?: 100L
+                val dlBytes = aria?.downloadedBytes?.takeIf { it > 0L }
+                    ?: ((effPct / 100.0) * parsedTotal).toLong()
+                val nextEta = aria?.etaSeconds ?: if (etaInSeconds >= 0 && !isMerging) etaInSeconds else current.etaSeconds
                 val seg = SegmentState(
                     index = 0,
                     start = 0L,
                     end = (parsedTotal - 1L).coerceAtLeast(0L),
                     downloaded = dlBytes,
-                    status = if (pct >= 100f) SegmentStatus.COMPLETED else SegmentStatus.RECEIVING,
+                    status = if (effPct >= 100f) SegmentStatus.COMPLETED else SegmentStatus.RECEIVING,
                     speedBytesPerSec = parsedSpeed,
                 )
                 val nextState = current.copy(
@@ -407,7 +493,7 @@ class YtDlpMediaEngine {
                     totalSize = if (parsedTotal > 100L) parsedTotal else current.totalSize,
                     downloadedSize = dlBytes,
                     speedBytesPerSec = if (isMerging) 0.0 else parsedSpeed,
-                    etaSeconds = if (etaInSeconds >= 0 && !isMerging) etaInSeconds else current.etaSeconds,
+                    etaSeconds = nextEta,
                     segmentsJson = SegmentState.listToJson(listOf(seg)),
                     updatedAt = now,
                 )
