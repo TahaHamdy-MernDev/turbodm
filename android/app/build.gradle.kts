@@ -13,8 +13,8 @@ android {
         applicationId = "com.turbodm.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -92,8 +92,8 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // Social Media, YouTube, Playlists, TikTok, Facebook, X, HLS/DASH (yt-dlp + ffmpeg)
-    val ytdlpVersion = "0.17.2"
+    // Social Media, YouTube, Playlists, TikTok, Facebook, X, HLS/DASH (yt-dlp + ffmpeg + QuickJS)
+    val ytdlpVersion = "0.18.1"
     implementation("io.github.junkfood02.youtubedl-android:library:$ytdlpVersion")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$ytdlpVersion")
 

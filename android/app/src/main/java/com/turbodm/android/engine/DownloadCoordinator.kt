@@ -13,6 +13,7 @@ import com.turbodm.android.data.ProbeResult
 import com.turbodm.android.service.DownloadForegroundService
 import com.turbodm.android.util.Formatters
 import com.turbodm.android.util.StoragePublisher
+import com.turbodm.android.util.YouTubeCookieHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -71,8 +72,21 @@ class DownloadCoordinator(private val appContext: Context) {
     init {
         scope.launch {
             dao.recoverInterruptedAsPaused()
+            val hasCookies = YouTubeCookieHelper.hasSavedCookies(appContext)
+            if (prefs.state.value.youtubeSignedIn != hasCookies) {
+                prefs.update { it.copy(youtubeSignedIn = hasCookies) }
+            }
             mediaEngine.ensureInitialized(appContext).onSuccess { ver ->
                 prefs.update { it.copy(ytdlpVersion = ver) }
+                val staleAgeMs = System.currentTimeMillis() - prefs.state.value.lastYtdlpUpdateMs
+                val needsAutoUpdate = ver.startsWith("2024.") ||
+                    ver.startsWith("2025.") ||
+                    ver.equals("Bundled", ignoreCase = true) ||
+                    ver.equals("Ready", ignoreCase = true) ||
+                    staleAgeMs > 24L * 60L * 60L * 1000L
+                if (needsAutoUpdate) {
+                    updateYtDlp()
+                }
             }
         }
     }
@@ -368,7 +382,12 @@ class DownloadCoordinator(private val appContext: Context) {
     suspend fun updateYtDlp(): Result<String> {
         val res = mediaEngine.updateBinary(appContext)
         res.onSuccess { msg ->
-            prefs.update { it.copy(ytdlpVersion = msg) }
+            prefs.update {
+                it.copy(
+                    ytdlpVersion = msg,
+                    lastYtdlpUpdateMs = System.currentTimeMillis(),
+                )
+            }
         }
         return res
     }

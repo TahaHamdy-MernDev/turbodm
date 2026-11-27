@@ -11,9 +11,11 @@ import com.turbodm.android.data.SegmentState
 import com.turbodm.android.data.SegmentStatus
 import com.turbodm.android.util.Formatters
 import com.turbodm.android.util.StoragePublisher
+import com.turbodm.android.util.YouTubeCookieHelper
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
+import com.yausername.youtubedl_android.YoutubeDLResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
@@ -37,10 +39,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 class YtDlpMediaEngine {
 
     private val initMutex = Mutex()
+    private val updateMutex = Mutex()
     @Volatile
     private var initialized = false
     @Volatile
     private var cachedVersion: String? = null
+    @Volatile
+    private var autoUpdatedThisSession = false
 
     private val fastHttpClient = OkHttpClient.Builder()
         .followRedirects(true)
@@ -102,22 +107,44 @@ class YtDlpMediaEngine {
         }
     }
 
-    suspend fun updateBinary(context: Context): Result<String> = withContext(Dispatchers.IO) {
-        ensureInitialized(context).onFailure { return@withContext Result.failure(it) }
-        runCatching {
-            val appCtx = context.applicationContext
-            val status = YoutubeDL.getInstance().updateYoutubeDL(
-                appCtx,
-                YoutubeDL.UpdateChannel.STABLE
-            )
-            val ver = runCatching { YoutubeDL.getInstance().version(appCtx) }.getOrNull() ?: "Updated"
-            cachedVersion = ver
-            when (status) {
-                YoutubeDL.UpdateStatus.DONE -> "Updated to $ver"
-                YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE -> "Already up to date ($ver)"
-                else -> ver
+    suspend fun updateBinary(context: Context): Result<String> = updateMutex.withLock {
+        withContext(Dispatchers.IO) {
+            ensureInitialized(context).onFailure { return@withContext Result.failure(it) }
+            runCatching {
+                val appCtx = context.applicationContext
+                val status = YoutubeDL.getInstance().updateYoutubeDL(
+                    appCtx,
+                    YoutubeDL.UpdateChannel.STABLE
+                )
+                val ver = runCatching { YoutubeDL.getInstance().version(appCtx) }.getOrNull() ?: "Updated"
+                cachedVersion = ver
+                when (status) {
+                    YoutubeDL.UpdateStatus.DONE -> "Updated to $ver"
+                    YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE -> "Already up to date ($ver)"
+                    else -> ver
+                }
             }
         }
+    }
+
+    private fun isYouTubeUrl(url: String): Boolean =
+        Formatters.extractYouTubeVideoId(url) != null ||
+            url.contains("youtube.com", ignoreCase = true) ||
+            url.contains("youtu.be", ignoreCase = true)
+
+    private fun isSignInOrBotError(msg: String?): Boolean {
+        val lower = msg?.lowercase().orEmpty()
+        return lower.contains("sign in") ||
+            lower.contains("not a bot") ||
+            lower.contains("confirm your age") ||
+            lower.contains("login_required")
+    }
+
+    private fun isRetryableExtractError(msg: String?): Boolean {
+        val lower = msg?.lowercase().orEmpty()
+        return isSignInOrBotError(lower) ||
+            lower.contains("403") ||
+            lower.contains("unable to extract")
     }
 
     private fun ytdlpCacheDir(context: Context): File =
@@ -204,10 +231,12 @@ class YtDlpMediaEngine {
         val request = YoutubeDLRequest(probeTarget).apply {
             addOption("--flat-playlist")
             addOption("--dump-single-json")
-            addOption("--force-ipv4")
             addOption("--no-warnings")
             addOption("--socket-timeout", "15")
             addOption("--cache-dir", ytdlpCacheDir(context).absolutePath)
+            if (isYouTubeUrl(probeTarget) && YouTubeCookieHelper.hasSavedCookies(context)) {
+                addOption("--cookies", YouTubeCookieHelper.cookieFile(context).absolutePath)
+            }
         }
 
         val response = YoutubeDL.getInstance().execute(request)
@@ -273,6 +302,129 @@ class YtDlpMediaEngine {
         )
     }
 
+    private fun buildDownloadRequest(
+        context: Context,
+        current: DownloadEntity,
+        outputTemplate: String,
+        extraExtractorArgs: String? = null,
+    ): YoutubeDLRequest {
+        val cacheDir = ytdlpCacheDir(context)
+        return YoutubeDLRequest(current.url).apply {
+            addOption("--no-playlist")
+            addOption("--continue")
+            addOption("--no-warnings")
+            addOption("--no-quiet")
+            addOption("--no-simulate")
+            addOption("--progress")
+            addOption("--newline")
+            addOption("--no-check-formats")
+            addOption("--no-mtime")
+            addOption("--windows-filenames")
+            addOption("--socket-timeout", "15")
+            addOption("--cache-dir", cacheDir.absolutePath)
+            addOption("--http-chunk-size", "10M")
+            addOption("--concurrent-fragments", "4")
+            addOption("--retries", "3")
+            addOption("--fragment-retries", "3")
+            addOption("-o", outputTemplate)
+            addOption("--print", "after_move:TURBODM_FINAL_PATH:%(filepath)s")
+
+            if (isYouTubeUrl(current.url) && YouTubeCookieHelper.hasSavedCookies(context)) {
+                addOption("--cookies", YouTubeCookieHelper.cookieFile(context).absolutePath)
+            }
+            if (!extraExtractorArgs.isNullOrBlank()) {
+                addOption("--extractor-args", extraExtractorArgs)
+            }
+
+            val fmt = current.mediaFormatId.ifBlank { androidMp4Selector(1080) }
+            addOption("-f", fmt)
+
+            if (current.mediaAudioOnly) {
+                addOption("-x")
+                val codec = if (current.filename.endsWith(".m4a", ignoreCase = true)) "m4a" else "mp3"
+                addOption("--audio-format", codec)
+                addOption("--audio-quality", "0")
+                addOption("--embed-metadata")
+            } else {
+                addOption("-S", "vcodec:h264,acodec:aac,ext:mp4:m4a")
+                addOption("--merge-output-format", "mp4")
+                addOption("--remux-video", "mp4")
+                addOption("--postprocessor-args", "Merger+ffmpeg:-movflags +faststart")
+                addOption("--postprocessor-args", "VideoRemuxer+ffmpeg:-movflags +faststart")
+            }
+        }
+    }
+
+    private suspend fun executeWithProgress(
+        req: YoutubeDLRequest,
+        initialState: DownloadEntity,
+        pauseRequested: AtomicBoolean,
+        cancelRequested: AtomicBoolean,
+        onStateUpdate: (DownloadEntity) -> Unit,
+        onProgress: suspend (DownloadEntity) -> Unit,
+    ): YoutubeDLResponse = coroutineScope {
+        var current = initialState
+        var lastEmitMs = 0L
+        val progressChan = Channel<DownloadEntity>(Channel.CONFLATED)
+        val collectorJob = launch {
+            for (update in progressChan) {
+                onProgress(update)
+            }
+        }
+        try {
+            val res = YoutubeDL.getInstance().execute(req, current.id) { progress, etaInSeconds, line ->
+                if (pauseRequested.get() || cancelRequested.get()) {
+                    YoutubeDL.getInstance().destroyProcessById(current.id)
+                    return@execute
+                }
+                val safeLine = line.orEmpty()
+                val isMerging = safeLine.contains("[Merger]", ignoreCase = true) ||
+                    safeLine.contains("[VideoRemuxer]", ignoreCase = true) ||
+                    safeLine.contains("[ExtractAudio]", ignoreCase = true) ||
+                    safeLine.contains("[Fixup", ignoreCase = true) ||
+                    safeLine.contains("Deleting original file", ignoreCase = true)
+                val isDownloading = progress >= 0f || safeLine.contains("[download]")
+                if (!isMerging && !isDownloading) return@execute
+
+                val now = System.currentTimeMillis()
+                if (!isMerging && progress < 100f && now - lastEmitMs < 250L) return@execute
+                lastEmitMs = now
+
+                val pct = progress.coerceIn(0f, 100f)
+                val parsedSpeed = parseSpeedFromLine(safeLine)
+                val parsedTotal = parseTotalSizeFromLine(safeLine) ?: current.totalSize ?: 100L
+                val dlBytes = ((pct / 100.0) * parsedTotal).toLong()
+                val seg = SegmentState(
+                    index = 0,
+                    start = 0L,
+                    end = (parsedTotal - 1L).coerceAtLeast(0L),
+                    downloaded = dlBytes,
+                    status = if (pct >= 100f) SegmentStatus.COMPLETED else SegmentStatus.RECEIVING,
+                    speedBytesPerSec = parsedSpeed,
+                )
+                val nextState = current.copy(
+                    status = if (isMerging) DownloadStatus.MERGING.name else DownloadStatus.DOWNLOADING.name,
+                    totalSize = if (parsedTotal > 100L) parsedTotal else current.totalSize,
+                    downloadedSize = dlBytes,
+                    speedBytesPerSec = if (isMerging) 0.0 else parsedSpeed,
+                    etaSeconds = if (etaInSeconds >= 0 && !isMerging) etaInSeconds else current.etaSeconds,
+                    segmentsJson = SegmentState.listToJson(listOf(seg)),
+                    updatedAt = now,
+                )
+                current = nextState
+                onStateUpdate(nextState)
+                progressChan.trySend(nextState)
+            }
+            progressChan.close()
+            collectorJob.join()
+            res
+        } catch (t: Throwable) {
+            progressChan.close()
+            collectorJob.cancelAndJoin()
+            throw t
+        }
+    }
+
     suspend fun downloadMedia(
         context: Context,
         entity: DownloadEntity,
@@ -300,7 +452,6 @@ class YtDlpMediaEngine {
         }
 
         val workDir = File(context.filesDir, "ytdlp_work/${current.id}").apply { mkdirs() }
-        val cacheDir = ytdlpCacheDir(context)
         val rawStem = current.filename.substringBeforeLast('.')
         val isGenericName = rawStem.isBlank() ||
             rawStem.equals("video", ignoreCase = true) ||
@@ -313,105 +464,77 @@ class YtDlpMediaEngine {
             File(workDir, "$stem.%(ext)s").absolutePath
         }
 
-        val req = YoutubeDLRequest(current.url).apply {
-            addOption("--no-playlist")
-            addOption("--continue")
-            addOption("--no-warnings")
-            addOption("--no-quiet")
-            addOption("--no-simulate")
-            addOption("--progress")
-            addOption("--newline")
-            addOption("--force-ipv4")
-            addOption("--no-check-formats")
-            addOption("--no-mtime")
-            addOption("--windows-filenames")
-            addOption("--socket-timeout", "15")
-            addOption("--cache-dir", cacheDir.absolutePath)
-            addOption("--http-chunk-size", "10M")
-            addOption("--concurrent-fragments", "4")
-            addOption("--retries", "3")
-            addOption("--fragment-retries", "3")
-            addOption("-o", outputTemplate)
-            addOption("--print", "after_move:TURBODM_FINAL_PATH:%(filepath)s")
-
-            val fmt = current.mediaFormatId.ifBlank { androidMp4Selector(1080) }
-            addOption("-f", fmt)
-
-            if (current.mediaAudioOnly) {
-                addOption("-x")
-                val codec = if (current.filename.endsWith(".m4a", ignoreCase = true)) "m4a" else "mp3"
-                addOption("--audio-format", codec)
-                addOption("--audio-quality", "0")
-                addOption("--embed-metadata")
-            } else {
-                addOption("-S", "vcodec:h264,acodec:aac,ext:mp4:m4a")
-                addOption("--merge-output-format", "mp4")
-                addOption("--remux-video", "mp4")
-                addOption("--postprocessor-args", "Merger+ffmpeg:-movflags +faststart")
-                addOption("--postprocessor-args", "VideoRemuxer+ffmpeg:-movflags +faststart")
-            }
-        }
-
-        var lastEmitMs = 0L
         try {
-            val response = coroutineScope {
-                val progressChan = Channel<DownloadEntity>(Channel.CONFLATED)
-                val collectorJob = launch {
-                    for (update in progressChan) {
-                        onProgress(update)
+            val response = try {
+                executeWithProgress(
+                    req = buildDownloadRequest(context, current, outputTemplate, null),
+                    initialState = current,
+                    pauseRequested = pauseRequested,
+                    cancelRequested = cancelRequested,
+                    onStateUpdate = { current = it },
+                    onProgress = onProgress,
+                )
+            } catch (e1: Exception) {
+                if (pauseRequested.get() || cancelRequested.get() || !isRetryableExtractError(e1.message)) {
+                    throw e1
+                }
+                var lastErr: Exception = e1
+                var retryRes: YoutubeDLResponse? = null
+
+                if (!autoUpdatedThisSession) {
+                    autoUpdatedThisSession = true
+                    current = current.copy(
+                        status = DownloadStatus.PROBING.name,
+                        errorMessage = "",
+                        speedBytesPerSec = 0.0,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                    onProgress(current)
+                    updateBinary(context)
+                    retryRes = try {
+                        executeWithProgress(
+                            req = buildDownloadRequest(context, current, outputTemplate, null),
+                            initialState = current,
+                            pauseRequested = pauseRequested,
+                            cancelRequested = cancelRequested,
+                            onStateUpdate = { current = it },
+                            onProgress = onProgress,
+                        )
+                    } catch (e2: Exception) {
+                        if (pauseRequested.get() || cancelRequested.get()) throw e2
+                        lastErr = e2
+                        null
                     }
                 }
-                try {
-                    val res = YoutubeDL.getInstance().execute(req, current.id) { progress, etaInSeconds, line ->
-                        if (pauseRequested.get() || cancelRequested.get()) {
-                            YoutubeDL.getInstance().destroyProcessById(current.id)
-                            return@execute
-                        }
-                        val safeLine = line.orEmpty()
-                        val isMerging = safeLine.contains("[Merger]", ignoreCase = true) ||
-                            safeLine.contains("[VideoRemuxer]", ignoreCase = true) ||
-                            safeLine.contains("[ExtractAudio]", ignoreCase = true) ||
-                            safeLine.contains("[Fixup", ignoreCase = true) ||
-                            safeLine.contains("Deleting original file", ignoreCase = true)
-                        val isDownloading = progress >= 0f || safeLine.contains("[download]")
-                        if (!isMerging && !isDownloading) return@execute
 
-                        val now = System.currentTimeMillis()
-                        if (!isMerging && progress < 100f && now - lastEmitMs < 250L) return@execute
-                        lastEmitMs = now
-
-                        val pct = progress.coerceIn(0f, 100f)
-                        val parsedSpeed = parseSpeedFromLine(safeLine)
-                        val parsedTotal = parseTotalSizeFromLine(safeLine) ?: current.totalSize ?: 100L
-                        val dlBytes = ((pct / 100.0) * parsedTotal).toLong()
-                        val seg = SegmentState(
-                            index = 0,
-                            start = 0L,
-                            end = (parsedTotal - 1L).coerceAtLeast(0L),
-                            downloaded = dlBytes,
-                            status = if (pct >= 100f) SegmentStatus.COMPLETED else SegmentStatus.RECEIVING,
-                            speedBytesPerSec = parsedSpeed,
+                if (retryRes == null && isYouTubeUrl(current.url) && isRetryableExtractError(lastErr.message)) {
+                    current = current.copy(
+                        status = DownloadStatus.PROBING.name,
+                        errorMessage = "",
+                        speedBytesPerSec = 0.0,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                    onProgress(current)
+                    retryRes = try {
+                        executeWithProgress(
+                            req = buildDownloadRequest(
+                                context,
+                                current,
+                                outputTemplate,
+                                "youtube:player_client=android_vr,tv_embedded,mweb"
+                            ),
+                            initialState = current,
+                            pauseRequested = pauseRequested,
+                            cancelRequested = cancelRequested,
+                            onStateUpdate = { current = it },
+                            onProgress = onProgress,
                         )
-                        val nextState = current.copy(
-                            status = if (isMerging) DownloadStatus.MERGING.name else DownloadStatus.DOWNLOADING.name,
-                            totalSize = if (parsedTotal > 100L) parsedTotal else current.totalSize,
-                            downloadedSize = dlBytes,
-                            speedBytesPerSec = if (isMerging) 0.0 else parsedSpeed,
-                            etaSeconds = if (etaInSeconds >= 0 && !isMerging) etaInSeconds else current.etaSeconds,
-                            segmentsJson = SegmentState.listToJson(listOf(seg)),
-                            updatedAt = now,
-                        )
-                        current = nextState
-                        progressChan.trySend(nextState)
+                    } catch (e3: Exception) {
+                        throw e3
                     }
-                    progressChan.close()
-                    collectorJob.join()
-                    res
-                } catch (t: Throwable) {
-                    progressChan.close()
-                    collectorJob.cancelAndJoin()
-                    throw t
                 }
+
+                retryRes ?: throw lastErr
             }
 
             if (cancelRequested.get() || pauseRequested.get()) {
@@ -516,9 +639,14 @@ class YtDlpMediaEngine {
             } else {
                 Log.e(TAG, "Media download error for ${current.url}", e)
                 runCatching { workDir.deleteRecursively() }
+                val friendlyErr = if (isSignInOrBotError(e.message)) {
+                    "YouTube requires sign-in for this video. Go to Settings → YouTube Account to sign in, or try switching Wi-Fi/Mobile Data."
+                } else {
+                    e.message?.lines()?.lastOrNull { it.isNotBlank() } ?: "Download failed"
+                }
                 current = current.copy(
                     status = DownloadStatus.ERROR.name,
-                    errorMessage = e.message?.lines()?.lastOrNull { it.isNotBlank() } ?: "Download failed",
+                    errorMessage = friendlyErr,
                     speedBytesPerSec = 0.0,
                     etaSeconds = null,
                     updatedAt = System.currentTimeMillis(),

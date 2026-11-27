@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,7 +49,9 @@ import androidx.compose.ui.unit.sp
 import com.turbodm.android.engine.DownloadCoordinator
 import com.turbodm.android.ui.components.CompactStepper
 import com.turbodm.android.ui.components.TurboSwitch
+import com.turbodm.android.ui.components.YouTubeSignInDialog
 import com.turbodm.android.ui.theme.TurboColors
+import com.turbodm.android.util.YouTubeCookieHelper
 import kotlinx.coroutines.launch
 
 @Composable
@@ -57,10 +60,12 @@ fun SettingsScreen(
     onMessage: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val prefs by coordinator.prefs.state.collectAsState()
     val scope = rememberCoroutineScope()
     var updatingYtDlp by remember { mutableStateOf(false) }
     var qualityMenuExpanded by remember { mutableStateOf(false) }
+    var showYouTubeSignIn by remember { mutableStateOf(false) }
 
     val qualityOptions = remember {
         listOf(
@@ -191,6 +196,62 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+            HorizontalDivider(thickness = 1.dp, color = TurboColors.OutlineSubtle)
+
+            // Optional YouTube Account Sign-In Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "YouTube Account",
+                        color = TurboColors.OnSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                    )
+                    Text(
+                        text = if (prefs.youtubeSignedIn) {
+                            "Signed in • cookies active"
+                        } else {
+                            "Optional — fixes 'Please sign in' & age-restricted videos"
+                        },
+                        color = if (prefs.youtubeSignedIn) TurboColors.EmeraldGreen else TurboColors.OnSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(TurboColors.SurfaceContainerHigh)
+                        .border(
+                            1.dp,
+                            if (prefs.youtubeSignedIn) TurboColors.Outline else TurboColors.AdwaitaBlue,
+                            RoundedCornerShape(8.dp),
+                        )
+                        .clickable {
+                            if (prefs.youtubeSignedIn) {
+                                YouTubeCookieHelper.clearCookies(context)
+                                coordinator.prefs.update { it.copy(youtubeSignedIn = false) }
+                                onMessage("Signed out of YouTube")
+                            } else {
+                                showYouTubeSignIn = true
+                            }
+                        }
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                ) {
+                    Text(
+                        text = if (prefs.youtubeSignedIn) "Sign Out" else "Sign In",
+                        color = TurboColors.OnSurface,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
             }
             HorizontalDivider(thickness = 1.dp, color = TurboColors.OutlineSubtle)
@@ -395,6 +456,17 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(110.dp))
+    }
+
+    if (showYouTubeSignIn) {
+        YouTubeSignInDialog(
+            onDismiss = { showYouTubeSignIn = false },
+            onSignedIn = {
+                showYouTubeSignIn = false
+                coordinator.prefs.update { it.copy(youtubeSignedIn = true) }
+                onMessage("YouTube account connected")
+            },
+        )
     }
 }
 

@@ -158,4 +158,6 @@ data class AppPrefs(
     val audioFormat: String = "mp3",
     val wifiOnly: Boolean = false,
     val ytdlpVersion: String = "Bundled",
+    val youtubeSignedIn: Boolean = false,
+    val lastYtdlpUpdateMs: Long = 0L,
 )

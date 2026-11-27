@@ -20,6 +20,8 @@ class PrefsRepository(context: Context) {
         audioFormat = prefs.getString("audio_format", "mp3") ?: "mp3",
         wifiOnly = prefs.getBoolean("wifi_only", false),
         ytdlpVersion = prefs.getString("ytdlp_version", "Bundled") ?: "Bundled",
+        youtubeSignedIn = prefs.getBoolean("youtube_signed_in", false),
+        lastYtdlpUpdateMs = prefs.getLong("last_ytdlp_update_ms", 0L),
     )
 
     fun update(transform: (AppPrefs) -> AppPrefs) {
@@ -33,6 +35,8 @@ class PrefsRepository(context: Context) {
             .putString("audio_format", next.audioFormat)
             .putBoolean("wifi_only", next.wifiOnly)
             .putString("ytdlp_version", next.ytdlpVersion)
+            .putBoolean("youtube_signed_in", next.youtubeSignedIn)
+            .putLong("last_ytdlp_update_ms", next.lastYtdlpUpdateMs)
             .apply()
         _state.value = next
     }
